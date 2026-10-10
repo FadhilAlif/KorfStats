@@ -50,6 +50,7 @@
   - Opsi form clean dengan tombol 1-klik "Muat Roster Atlet Bantul" (10 Putra & 10 Putri resmi: Didiv dkk & Ririn dkk).
   - Validasi ketat gender mixed-sports korfball (K8: 4L & 4P; K4: 2L & 2P) beserta badge visual [L] dan [P] di seluruh antarmuka.
   - Implementasi Borang View lengkap dengan tabel Running Score berdampingan di sisi kanan (DP | TIME | NAME | SCORE [Kuning] | SCORE [Kuning] | NAME | TIME | DP).
+  - Implementasi Running Score Live di Layar Live View dengan gaya komparatif Kanan-Kiri (Home di sisi kiri dengan aksen biru, Away di sisi kanan dengan aksen hijau zamrud, kotak skor kuning #FFFF00, info Assist & DP, serta toggle mode 2 Kolom Berdampingan dan urutan waktu).
   - Pengujian unit test kalkulator di `tests/test-calculator.ts` (100% lulus).
   - Pengujian ekspor berkas Excel di `tests/test-excel-exporter.ts` (100% lulus).
   - Build produksi `npm run build` sukses 0 error.
