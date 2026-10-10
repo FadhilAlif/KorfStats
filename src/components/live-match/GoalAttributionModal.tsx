@@ -47,14 +47,14 @@ export function GoalAttributionModal({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-900 text-white uppercase tracking-wider">
-                {actionLabel} MADE (+1 POIN)
+                {actionLabel} MADE • +1
               </span>
               <span className="text-xs font-mono text-slate-500">
                 {formatClock(gameTimeSeconds)}
               </span>
             </div>
             <h3 className="text-base sm:text-lg font-black text-slate-900 mt-1 flex items-center gap-2">
-              <span>Atribusi Gol: #{selectedPlayer.jerseyNumber} {selectedPlayer.fullName}</span>
+              <span>Goal Attribution: #{selectedPlayer.jerseyNumber} {selectedPlayer.fullName}</span>
               <GenderBadge gender={selectedPlayer.gender} size="sm" />
             </h3>
           </div>
@@ -64,7 +64,7 @@ export function GoalAttributionModal({
         <div className="space-y-2">
           <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
             <Award className="w-4 h-4 text-amber-500" />
-            <span>1. Umpan Matang (Assist) Oleh Rekan Setim?</span>
+            <span>Assist By</span>
           </label>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -78,7 +78,7 @@ export function GoalAttributionModal({
               }`}
             >
               <CheckCircle className="w-3.5 h-3.5" />
-              <span>Tanpa Assist (Solo)</span>
+              <span>Solo (No Assist)</span>
             </button>
 
             {availableTeammates.map((mate) => {
@@ -107,7 +107,7 @@ export function GoalAttributionModal({
         <div className="space-y-2 pt-2 border-t border-slate-100">
           <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
             <Shield className="w-4 h-4 text-brand-700" />
-            <span>2. Dijaga Pemain Lawan Siapa (DP - Defended)?</span>
+            <span>DP By (Defended)</span>
           </label>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -120,7 +120,7 @@ export function GoalAttributionModal({
                   : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <span>Tanpa Penjaga (-)</span>
+              <span>None (Bebas)</span>
             </button>
 
             {availableOpponents.map((opp) => {
@@ -160,7 +160,7 @@ export function GoalAttributionModal({
             className="px-5 py-2.5 rounded-xl text-xs font-extrabold bg-slate-900 hover:bg-slate-800 text-white shadow-sm transition flex items-center gap-1.5"
           >
             <Check className="w-4 h-4 text-emerald-400" />
-            <span>Simpan Gol & Running Score (+1 Poin)</span>
+            <span>Simpan Gol (+1)</span>
           </button>
         </div>
       </div>

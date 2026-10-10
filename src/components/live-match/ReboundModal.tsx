@@ -25,10 +25,10 @@ export function ReboundModal({
         <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
           <div>
             <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full uppercase">
-              TEMBAKAN GAGAL (MISS)
+              MISSED SHOT
             </span>
             <h4 className="text-sm sm:text-base font-bold text-slate-900 mt-1">
-              Siapa Mengambil Rebound?
+              Rebound By
             </h4>
           </div>
           <button
@@ -36,7 +36,7 @@ export function ReboundModal({
             onClick={onClose}
             className="text-xs font-semibold text-slate-400 hover:text-slate-600 transition"
           >
-            Lewati (Bola Keluar)
+            Lewati (Dead Ball)
           </button>
         </div>
 
@@ -44,7 +44,7 @@ export function ReboundModal({
           {/* Offensive Rebound (Tim Penembak) */}
           <div>
             <p className="text-[11px] font-bold text-brand-700 uppercase mb-1.5 flex items-center gap-1">
-              <span>Rebound Offensive —</span>
+              <span>Offensive Rebound •</span>
               <span className="text-slate-600 font-medium normal-case">{currentTeam.name}</span>
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
@@ -66,7 +66,7 @@ export function ReboundModal({
           {opponentTeams.map((opp) => (
             <div key={opp.id}>
               <p className="text-[11px] font-bold text-teal-700 uppercase mb-1.5 flex items-center gap-1">
-                <span>Rebound Defensive —</span>
+                <span>Defensive Rebound •</span>
                 <span className="text-slate-600 font-medium normal-case">{opp.name}</span>
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
@@ -92,7 +92,7 @@ export function ReboundModal({
             onClick={onClose}
             className="w-full py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
           >
-            Tutup / Lewati Tanpa Rebound
+            Lewati / Dead Ball
           </button>
         </div>
       </div>

@@ -173,7 +173,7 @@ export default function LiveMatchPage() {
             }`}
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>{viewMode === 'BORANG' ? 'Tutup Borang View' : 'Pratinjau Borang View'}</span>
+            <span>{viewMode === 'BORANG' ? 'Tutup Form View' : 'Form View'}</span>
           </button>
 
           <button
@@ -183,7 +183,7 @@ export default function LiveMatchPage() {
             className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition flex items-center gap-1.5 shadow-xs disabled:opacity-50"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-            <span>{exporting ? 'Memproses...' : 'Unduh Score Sheet (.xlsx)'}</span>
+            <span>{exporting ? 'Memproses...' : 'Export Excel (.xlsx)'}</span>
           </button>
         </div>
       </div>
@@ -216,8 +216,8 @@ export default function LiveMatchPage() {
 
             <div className="bg-white rounded-xl border border-slate-200/90 p-3.5 shadow-card space-y-2">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <span className="text-xs font-bold text-slate-800">Pilih Atlet Pelaku Aksi</span>
-                <span className="text-[10px] text-slate-400">Tap untuk memilih</span>
+                <span className="text-xs font-bold text-slate-800">Lineup Lapangan</span>
+                <span className="text-[10px] text-slate-400">Pilih atlet</span>
               </div>
 
               <PlayerGrid

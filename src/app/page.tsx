@@ -34,19 +34,9 @@ export default function HomePage() {
       {/* Hero Banner — Corporate Minimalist */}
       <div className="relative overflow-hidden rounded-2xl bg-brand-950 p-6 sm:p-10 text-white shadow-card border border-brand-900">
         <div className="relative z-10 max-w-2xl space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-slate-200 border border-white/15">
-            <Trophy className="w-3.5 h-3.5 text-amber-400" />
-            <span>Fase 1 MVP — Digital Score Sheet & Excel Export</span>
-          </div>
-
           <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
             Pencatatan Statistik Real-Time Korfball Bantul
           </h1>
-
-          <p className="text-sm sm:text-base text-slate-300 leading-relaxed font-normal">
-            Eliminasi borang kertas di pinggir lapangan. Catat tembakan, pelanggaran, turnover, rebound, serta running score secara digital dengan ekspor instan ke format resmi <span className="font-bold text-amber-300">PRINT SCORE SHEET</span>.
-          </p>
-
           <div className="pt-2 flex flex-wrap gap-3">
             <Link
               href="/matches/new"
@@ -112,13 +102,12 @@ export default function HomePage() {
                       {m.matchCode}
                     </span>
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                        m.status === 'LIVE'
-                          ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 animate-pulse'
-                          : m.status === 'COMPLETED'
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${m.status === 'LIVE'
+                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 animate-pulse'
+                        : m.status === 'COMPLETED'
                           ? 'bg-slate-100 text-slate-700'
                           : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
-                      }`}
+                        }`}
                     >
                       {m.status}
                     </span>

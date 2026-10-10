@@ -42,7 +42,7 @@ export function BorangMatrixView({ match }: BorangMatrixViewProps) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
         <div>
           <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
-            BORANG VIEW — REPLIKA FISIK
+            OFFICIAL SCORE SHEET FORM
           </span>
           <h2 className="text-lg font-black text-slate-900 mt-1">
             {isThreeTeam ? 'SCORE SHEET 3 TEAM' : 'SCORE SHEET 2 TEAM'} — {match.matchCode}
@@ -59,7 +59,7 @@ export function BorangMatrixView({ match }: BorangMatrixViewProps) {
             className="px-3.5 py-1.5 rounded-lg text-xs font-bold border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 transition shadow-xs flex items-center gap-1.5"
           >
             <span>🖨️</span>
-            <span>Cetak Lembar Skor</span>
+            <span>Cetak Form (Print)</span>
           </button>
         </div>
       </div>
