@@ -1,0 +1,181 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Team {
+  id        String   @id @default(uuid())
+  name      String
+  code      String
+  logoUrl   String?  @map("logo_url")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  players     Player[]
+  homeMatches Match[]       @relation("TeamAMatches")
+  awayMatches Match[]       @relation("TeamBMatches")
+  thirdMatches Match[]      @relation("TeamCMatches")
+  lineups     MatchLineup[]
+  events      MatchEvent[]
+
+  @@map("teams")
+}
+
+model Player {
+  id              String   @id @default(uuid())
+  teamId          String   @map("team_id")
+  fullName        String   @map("full_name")
+  nickname        String?
+  jerseyNumber    Int      @map("jersey_number")
+  gender          String   // MALE, FEMALE
+  jerseySize      String?  @map("jersey_size")
+  primaryPosition String?  @map("primary_position")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  team            Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  lineups         MatchLineup[]
+  events          MatchEvent[]      @relation("PlayerEvents")
+  defendedEvents  MatchEvent[]      @relation("OpponentDefendedEvents")
+  gameStats       PlayerGameStat[]
+
+  @@unique([teamId, jerseyNumber], name: "uq_team_jersey")
+  @@map("players")
+}
+
+model Match {
+  id                    String   @id @default(uuid())
+  matchCode             String   @unique @map("match_code")
+  matchDate             DateTime @map("match_date")
+  venue                 String?
+  format                String   // K4, K8
+  teamStructure         String   // TWO_TEAM, THREE_TEAM
+  teamAId               String   @map("team_a_id")
+  teamBId               String   @map("team_b_id")
+  teamCId               String?  @map("team_c_id")
+  periods               Int      @default(2)
+  periodDurationMinutes Int      @default(20) @map("period_duration_minutes")
+  status                String   @default("SCHEDULED") // SCHEDULED, LIVE, COMPLETED
+  scoreTeamA           Int      @default(0) @map("score_team_a")
+  scoreTeamB           Int      @default(0) @map("score_team_b")
+  scoreTeamC           Int      @default(0) @map("score_team_c")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  teamA     Team             @relation("TeamAMatches", fields: [teamAId], references: [id])
+  teamB     Team             @relation("TeamBMatches", fields: [teamBId], references: [id])
+  teamC     Team?            @relation("TeamCMatches", fields: [teamCId], references: [id])
+  lineups   MatchLineup[]
+  events    MatchEvent[]
+  gameStats PlayerGameStat[]
+
+  @@map("matches")
+}
+
+model MatchLineup {
+  id            String  @id @default(uuid())
+  matchId       String  @map("match_id")
+  playerId      String  @map("player_id")
+  teamId        String  @map("team_id")
+  isStarter     Boolean @default(false) @map("is_starter")
+  isOnCourt     Boolean @default(false) @map("is_on_court")
+  periodEntered Int     @default(1) @map("period_entered")
+
+  match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  team   Team   @relation(fields: [teamId], references: [id])
+
+  @@unique([matchId, playerId], name: "uq_match_player")
+  @@map("match_lineups")
+}
+
+model MatchEvent {
+  id                 String   @id @default(uuid())
+  clientEventId      String   @unique @map("client_event_id")
+  matchId            String   @map("match_id")
+  playerId           String?  @map("player_id")
+  teamId             String   @map("team_id")
+  period             Int
+  gameTimeSeconds    Int      @map("game_time_seconds")
+  actionType         String   @map("action_type") // SHOOT_M, SHOOT_A, RI_M, RI_A, PENALTY_M, PENALTY_A, FREE_PASS_M, FREE_PASS_A, FREE_SHOT_M, FREE_SHOT_A, REB_OFF, REB_DEF, ASSIST, INTERCEPT, TURNOVER, FOUL
+  shotPosition       Int?     @map("shot_position") // 1 to 8
+  shotDistanceMeter  Int?     @map("shot_distance_meter") // 2, 4, 6, 8
+  turnoverType       String?  @map("turnover_type")
+  opponentPlayerId   String?  @map("opponent_player_id") // DP (Defended by)
+  pointsAwarded      Int      @default(0) @map("points_awarded")
+  runningScoreA      Int      @default(0) @map("running_score_a")
+  runningScoreB      Int      @default(0) @map("running_score_b")
+  runningScoreC      Int      @default(0) @map("running_score_c")
+  recordedAt         DateTime @default(now()) @map("recorded_at")
+  isDeleted          Boolean  @default(false) @map("is_deleted")
+
+  match          Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player         Player? @relation("PlayerEvents", fields: [playerId], references: [id])
+  team           Team    @relation(fields: [teamId], references: [id])
+  opponentPlayer Player? @relation("OpponentDefendedEvents", fields: [opponentPlayerId], references: [id])
+
+  @@index([matchId, recordedAt])
+  @@index([playerId])
+  @@map("match_events")
+}
+
+model PlayerGameStat {
+  id                   String @id @default(uuid())
+  matchId              String @map("match_id")
+  playerId             String @map("player_id")
+  sa                   Int    @default(0)
+  sm                   Int    @default(0)
+  ria                  Int    @default(0)
+  rim                  Int    @default(0)
+  fpa                  Int    @default(0)
+  fpm                  Int    @default(0)
+  pa                   Int    @default(0)
+  pm                   Int    @default(0)
+  fsa                  Int    @default(0)
+  fsm                  Int    @default(0)
+  rebOff               Int    @default(0) @map("reb_off")
+  rebDef               Int    @default(0) @map("reb_def")
+  assist               Int    @default(0)
+  intercept            Int    @default(0)
+  defended             Int    @default(0)
+  toSum                Int    @default(0) @map("to_sum")
+  fouls                Int    @default(0)
+  fgPercentage         Float  @default(0.0) @map("fg_percentage")
+  riPercentage         Float  @default(0.0) @map("ri_percentage")
+  positiveScore        Float  @default(0.0) @map("positive_score")
+  negativeScore        Float  @default(0.0) @map("negative_score")
+  totalScore           Float  @default(0.0) @map("total_score")
+  totalPositiveActions Int    @default(0) @map("total_positive_actions")
+  efficiency           Float  @default(0.0)
+  totalPoints          Int    @default(0) @map("total_points")
+
+  match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, playerId], name: "uq_player_match_stat")
+  @@index([matchId])
+  @@index([playerId])
+  @@map("player_game_stats")
+}
+
+model CoachWeightConfig {
+  id                     String   @id @default(uuid())
+  name                   String
+  isActive               Boolean  @default(true) @map("is_active")
+  weightSm               Float    @default(1.0) @map("weight_sm")
+  weightRim              Float    @default(1.0) @map("weight_rim")
+  weightRebOff           Float    @default(1.0) @map("weight_reb_off")
+  weightRebDef           Float    @default(1.0) @map("weight_reb_def")
+  weightAssist           Float    @default(1.0) @map("weight_assist")
+  weightIntercept        Float    @default(1.0) @map("weight_intercept")
+  weightDefended         Float    @default(1.0) @map("weight_defended")
+  weightTurnoverPenalty  Float    @default(1.0) @map("weight_turnover_penalty")
+  weightFoulPenalty      Float    @default(1.0) @map("weight_foul_penalty")
+  weightBadDefensePenalty Float   @default(1.0) @map("weight_bad_defense_penalty")
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  @@map("coach_weight_configs")
+}
