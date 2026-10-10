@@ -46,9 +46,11 @@
   - Implementasi generator lembar skor fisik berpresisi tinggi di `src/lib/excel/scoresheet-exporter.ts` (mencakup warna kuning `#FFFF00` untuk kolom SCORE).
   - Implementasi API Route Handler `/api/matches/[id]/export/route.ts`.
   - Implementasi layout utama (`src/app/layout.tsx`) dan halaman beranda (`src/app/page.tsx`).
-  - Implementasi formulir setup game (`src/app/matches/new/page.tsx`).
-  - Implementasi layar pencatatan live match court-side (`src/app/matches/[id]/page.tsx`) dengan 5 tombol tembakan, DP defended modal, quick undo, running score, dan borang matrix view.
+  - Refinement alur pencatatan ala FIBA LiveStats (Assist by rekan & DP Defended by lawan) saat gol Made.
+  - Opsi form clean dengan tombol 1-klik "Muat Roster Atlet Bantul" (10 Putra & 10 Putri resmi: Didiv dkk & Ririn dkk).
+  - Validasi ketat gender mixed-sports korfball (K8: 4L & 4P; K4: 2L & 2P) beserta badge visual [L] dan [P] di seluruh antarmuka.
+  - Implementasi Borang View lengkap dengan tabel Running Score berdampingan di sisi kanan (DP | TIME | NAME | SCORE [Kuning] | SCORE [Kuning] | NAME | TIME | DP).
   - Pengujian unit test kalkulator di `tests/test-calculator.ts` (100% lulus).
   - Pengujian ekspor berkas Excel di `tests/test-excel-exporter.ts` (100% lulus).
   - Build produksi `npm run build` sukses 0 error.
-  - Commit awal Git berhasil dicatat (`feat: initial setup and Phase 1 MVP core implementation for KorfStats Bantul`).
+  - Seluruh perubahan tercatat di Git branch `main`.
