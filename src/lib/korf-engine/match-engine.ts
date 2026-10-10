@@ -75,18 +75,23 @@ export interface CreateEventInput {
   match: MatchState;
   player: Player;
   actionType: ActionType;
+  gameTimeSeconds?: number;
+  period?: number;
   assist?: Player;
   opponent?: Player;
 }
 
 /**
  * Membuat MatchEvent baru dengan `clientEventId` UUIDv4.
+ * Mendukung snapshot gameTimeSeconds saat tombol pertama kali diklik (FIBA LiveStats paradigm).
  * Running score final dihitung ulang oleh `applyEvent` (BR-03/BR-07).
  */
 export function createMatchEvent({
   match,
   player,
   actionType,
+  gameTimeSeconds,
+  period,
   assist,
   opponent,
 }: CreateEventInput): MatchEvent {
@@ -96,8 +101,8 @@ export function createMatchEvent({
     matchId: match.id,
     playerId: player.id,
     teamId: player.teamId,
-    period: match.currentPeriod,
-    gameTimeSeconds: match.gameTimeSeconds,
+    period: period ?? match.currentPeriod,
+    gameTimeSeconds: gameTimeSeconds ?? match.gameTimeSeconds,
     actionType,
     pointsAwarded: isGoalAction(actionType) ? POINTS_PER_GOAL : 0,
     runningScoreA: match.scoreTeamA,

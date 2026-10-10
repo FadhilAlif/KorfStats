@@ -39,12 +39,19 @@ export default function LiveMatchPage() {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   useMatchClock(isTimerRunning, tick);
 
-  // Modal dialog states
+  // Modal dialog states & Snapshotted Timestamps (Freeze on Click)
   const [goalModalOpen, setGoalModalOpen] = useState(false);
   const [pendingActionType, setPendingActionType] = useState<ActionType | null>(null);
+  const [pendingGoalTimeSeconds, setPendingGoalTimeSeconds] = useState<number | null>(null);
+  const [pendingGoalPeriod, setPendingGoalPeriod] = useState<number | null>(null);
+
   const [selectedAssistPlayerId, setSelectedAssistPlayerId] = useState<string | null>(null);
   const [selectedDpOpponentId, setSelectedDpOpponentId] = useState<string | null>(null);
+
   const [reboundModalOpen, setReboundModalOpen] = useState(false);
+  const [pendingMissTimeSeconds, setPendingMissTimeSeconds] = useState<number | null>(null);
+  const [pendingMissPeriod, setPendingMissPeriod] = useState<number | null>(null);
+
   const [exporting, setExporting] = useState(false);
 
   if (loading) {
@@ -72,12 +79,15 @@ export default function LiveMatchPage() {
   const availableOpponents = opponentTeams.flatMap((t) => t.players || []);
   const availableTeammates = currentPlayers.filter((p) => p.id !== selectedPlayer?.id);
 
-  // Action Pad click handler
+  // Action Pad click handler — Capture timestamp immediately upon click!
   const handleActionClick = (actionType: ActionType) => {
     if (!selectedPlayer) return;
 
     if (isGoalAction(actionType)) {
+      // FREEZE / SNAPSHOT WAKTU KEJADIAN GOL SAAT TOMBOL DIKLIK
       setPendingActionType(actionType);
+      setPendingGoalTimeSeconds(match.gameTimeSeconds);
+      setPendingGoalPeriod(match.currentPeriod);
       setSelectedAssistPlayerId(null);
       setSelectedDpOpponentId(null);
       setGoalModalOpen(true);
@@ -90,12 +100,15 @@ export default function LiveMatchPage() {
       recordEvent(event);
 
       if (isMissAction(actionType)) {
+        // FREEZE / SNAPSHOT WAKTU KEJADIAN REBOUND SEGERA SETELAH TEMBAKAN MISS
+        setPendingMissTimeSeconds(match.gameTimeSeconds);
+        setPendingMissPeriod(match.currentPeriod);
         setReboundModalOpen(true);
       }
     }
   };
 
-  // Confirm Goal Attribution
+  // Confirm Goal Attribution — Use snapshotted timestamp
   const handleConfirmGoal = () => {
     if (!selectedPlayer || !pendingActionType) return;
 
@@ -106,6 +119,8 @@ export default function LiveMatchPage() {
       match,
       player: selectedPlayer,
       actionType: pendingActionType,
+      gameTimeSeconds: pendingGoalTimeSeconds ?? match.gameTimeSeconds,
+      period: pendingGoalPeriod ?? match.currentPeriod,
       assist,
       opponent,
     });
@@ -113,17 +128,23 @@ export default function LiveMatchPage() {
     recordEvent(event);
     setGoalModalOpen(false);
     setPendingActionType(null);
+    setPendingGoalTimeSeconds(null);
+    setPendingGoalPeriod(null);
   };
 
-  // Assign Rebound after Miss
+  // Assign Rebound after Miss — Use snapshotted timestamp
   const handleAssignRebound = (reboundPlayer: Player, isOffensive: boolean) => {
     const event = createMatchEvent({
       match,
       player: reboundPlayer,
       actionType: isOffensive ? 'REB_OFF' : 'REB_DEF',
+      gameTimeSeconds: pendingMissTimeSeconds ?? match.gameTimeSeconds,
+      period: pendingMissPeriod ?? match.currentPeriod,
     });
     recordEvent(event);
     setReboundModalOpen(false);
+    setPendingMissTimeSeconds(null);
+    setPendingMissPeriod(null);
   };
 
   // Excel Score Sheet Export
@@ -251,7 +272,7 @@ export default function LiveMatchPage() {
         open={goalModalOpen}
         selectedPlayer={selectedPlayer}
         pendingActionType={pendingActionType}
-        gameTimeSeconds={match.gameTimeSeconds}
+        gameTimeSeconds={pendingGoalTimeSeconds ?? match.gameTimeSeconds}
         availableTeammates={availableTeammates}
         availableOpponents={availableOpponents}
         selectedAssistPlayerId={selectedAssistPlayerId}
@@ -262,6 +283,8 @@ export default function LiveMatchPage() {
         onCancel={() => {
           setGoalModalOpen(false);
           setPendingActionType(null);
+          setPendingGoalTimeSeconds(null);
+          setPendingGoalPeriod(null);
         }}
       />
 
@@ -271,7 +294,11 @@ export default function LiveMatchPage() {
         currentTeam={currentTeam}
         opponentTeams={opponentTeams}
         onAssignRebound={handleAssignRebound}
-        onClose={() => setReboundModalOpen(false)}
+        onClose={() => {
+          setReboundModalOpen(false);
+          setPendingMissTimeSeconds(null);
+          setPendingMissPeriod(null);
+        }}
       />
     </div>
   );
