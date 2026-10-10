@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { localDb } from '@/lib/local-db/dexie-db';
 import type { MatchState } from '@/types/match';
 import { PlusCircle, FileSpreadsheet, Play, Trophy, Calendar, Users } from 'lucide-react';
@@ -31,20 +32,41 @@ export default function HomePage() {
 
   return (
     <div className="space-y-8">
-      {/* Hero Banner — Corporate Minimalist */}
+      {/* Hero Banner — Corporate Minimalist with Official Logo */}
       <div className="relative overflow-hidden rounded-2xl bg-brand-950 p-6 sm:p-10 text-white shadow-card border border-brand-900">
-        <div className="relative z-10 max-w-2xl space-y-4">
-          <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
-            Pencatatan Statistik Real-Time Korfball Bantul
-          </h1>
-          <div className="pt-2 flex flex-wrap gap-3">
-            <Link
-              href="/matches/new"
-              className="px-5 py-2.5 rounded-xl text-sm font-bold bg-white hover:bg-slate-100 text-brand-950 transition flex items-center gap-2 shadow-xs"
-            >
-              <PlusCircle className="w-4 h-4 text-brand-700" />
-              <span>Inisialisasi Pertandingan Baru</span>
-            </Link>
+        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="max-w-2xl space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-slate-200 border border-white/15">
+              <span>Pengkab Korfball Kabupaten Bantul</span>
+            </div>
+            <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
+              Pencatatan Statistik Real-Time Korfball Bantul
+            </h1>
+            <p className="text-sm text-slate-300">
+              Platform resmi pencatatan skor live pinggir lapangan, penghitungan statistik baku, dan ekspor score sheet resmi.
+            </p>
+            <div className="pt-2 flex flex-wrap gap-3">
+              <Link
+                href="/matches/new"
+                className="px-5 py-2.5 rounded-xl text-sm font-bold bg-white hover:bg-slate-100 text-brand-950 transition flex items-center gap-2 shadow-xs"
+              >
+                <PlusCircle className="w-4 h-4 text-brand-700" />
+                <span>Inisialisasi Pertandingan Baru</span>
+              </Link>
+            </div>
+          </div>
+
+          <div className="hidden md:flex shrink-0 items-center justify-center">
+            <div className="relative w-28 h-28 lg:w-32 lg:h-32 rounded-2xl overflow-hidden border border-white/20 shadow-raised bg-brand-900 group-hover:scale-105 transition">
+              <Image
+                src="/image/Korfball Bantul Logo.jpg"
+                alt="Logo Korfball Bantul"
+                fill
+                sizes="128px"
+                className="object-cover"
+                priority
+              />
+            </div>
           </div>
         </div>
       </div>

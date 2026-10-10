@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import Link from 'next/link';
+import Image from 'next/image';
 import { PlusCircle, Trophy } from 'lucide-react';
 
 const inter = Inter({
@@ -20,6 +21,10 @@ export const metadata: Metadata = {
   title: 'KorfStats Bantul — Pencatatan Statistik Korfball',
   description:
     'Aplikasi pencatatan score sheet pertandingan real-time dan evaluasi performa atlet Korfball Kabupaten Bantul',
+  icons: {
+    icon: '/image/Korfball Bantul Logo.jpg',
+    apple: '/image/Korfball Bantul Logo.jpg',
+  },
 };
 
 export default function RootLayout({
@@ -35,8 +40,15 @@ export default function RootLayout({
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             {/* Brand Logo & Name */}
             <Link href="/" className="flex items-center space-x-3 group">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-500 to-teal-500 flex items-center justify-center font-black text-lg text-white shadow-xs group-hover:scale-105 transition-transform">
-                K
+              <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-white/20 shadow-xs group-hover:scale-105 transition-transform bg-brand-900 shrink-0">
+                <Image
+                  src="/image/Korfball Bantul Logo.jpg"
+                  alt="Logo Korfball Bantul"
+                  fill
+                  sizes="40px"
+                  className="object-cover"
+                  priority
+                />
               </div>
               <div>
                 <span className="text-base sm:text-lg font-black tracking-tight text-white block">
@@ -72,6 +84,29 @@ export default function RootLayout({
         <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
           {children}
         </main>
+
+        {/* Corporate Minimalist Footer */}
+        <footer className="border-t border-slate-200/90 bg-white py-4 mt-auto">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+            <div className="flex items-center gap-2.5">
+              <div className="relative w-6 h-6 rounded-md overflow-hidden border border-slate-200 bg-brand-900 shrink-0">
+                <Image
+                  src="/image/Korfball Bantul Logo.jpg"
+                  alt="Korfball Bantul"
+                  fill
+                  sizes="24px"
+                  className="object-cover"
+                />
+              </div>
+              <span className="font-semibold text-slate-700">
+                KorfStats Bantul • Pengkab Korfball Kabupaten Bantul
+              </span>
+            </div>
+            <div className="text-[11px] text-slate-400">
+              Official Live Match Recording & Scoring System
+            </div>
+          </div>
+        </footer>
       </body>
     </html>
   );
