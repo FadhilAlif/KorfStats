@@ -18,6 +18,9 @@ import {
   Award,
   Users,
   CheckCircle,
+  Columns,
+  ArrowUpDown,
+  Flame,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -48,6 +51,10 @@ export default function LiveMatchPage() {
 
   // Excel export loading
   const [exporting, setExporting] = useState(false);
+
+  // Running Score Live UI preferences
+  const [runningScoreStyle, setRunningScoreStyle] = useState<'SPLIT_TIMELINE' | 'DUAL_COLUMN'>('SPLIT_TIMELINE');
+  const [runningScoreOrder, setRunningScoreOrder] = useState<'NEWEST_FIRST' | 'CHRONOLOGICAL'>('NEWEST_FIRST');
 
   // Load match from Dexie
   useEffect(() => {
@@ -344,10 +351,36 @@ export default function LiveMatchPage() {
     }
   };
 
+  const getActionTypeLabel = (actionType: ActionType) => {
+    switch (actionType) {
+      case 'SHOOT_M':
+        return { label: 'SHOOT MADE', style: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
+      case 'RI_M':
+        return { label: 'RUNNING IN', style: 'bg-teal-100 text-teal-800 border-teal-300' };
+      case 'PENALTY_M':
+        return { label: 'PENALTY', style: 'bg-cyan-100 text-cyan-800 border-cyan-300' };
+      case 'FREE_PASS_M':
+        return { label: 'FREE PASS', style: 'bg-sky-100 text-sky-800 border-sky-300' };
+      case 'FREE_SHOT_M':
+        return { label: 'FREE SHOT', style: 'bg-indigo-100 text-indigo-800 border-indigo-300' };
+      default:
+        return { label: actionType, style: 'bg-slate-100 text-slate-800 border-slate-300' };
+    }
+  };
+
   const activeEvents = match.events.filter((e) => !e.isDeleted);
-  const goalEvents = activeEvents
-    .filter((e) => e.pointsAwarded > 0)
-    .sort((a, b) => b.gameTimeSeconds - a.gameTimeSeconds);
+  const rawGoalEvents = activeEvents.filter((e) => e.pointsAwarded > 0);
+  const sortedGoalEvents = [...rawGoalEvents].sort((a, b) => {
+    if (runningScoreOrder === 'NEWEST_FIRST') {
+      return b.gameTimeSeconds - a.gameTimeSeconds;
+    } else {
+      return a.gameTimeSeconds - b.gameTimeSeconds;
+    }
+  });
+
+  const goalsTeamA = rawGoalEvents.filter((e) => e.teamId === match.teamA.id);
+  const goalsTeamB = rawGoalEvents.filter((e) => e.teamId === match.teamB.id);
+  const goalsTeamC = match.teamC ? rawGoalEvents.filter((e) => e.teamId === match.teamC!.id) : [];
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto pb-12">
@@ -482,8 +515,8 @@ export default function LiveMatchPage() {
         <BorangMatrixView match={match} />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Left Column: Team Switcher & On-Court Lineup (4 cols) */}
-          <div className="lg:col-span-4 space-y-4">
+          {/* Left Column: Team Switcher & On-Court Lineup (3 cols) */}
+          <div className="lg:col-span-3 space-y-4">
             {/* Team Tabs */}
             <div className="flex gap-2 p-1.5 bg-slate-200 rounded-xl">
               <button
@@ -575,8 +608,8 @@ export default function LiveMatchPage() {
             </div>
           </div>
 
-          {/* Center Column: Quick Action Pad (5 cols) */}
-          <div className="lg:col-span-5 space-y-4">
+          {/* Center Column: Quick Action Pad (4 cols) */}
+          <div className="lg:col-span-4 space-y-4">
             <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-4">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <div>
@@ -747,69 +780,423 @@ export default function LiveMatchPage() {
             </div>
           </div>
 
-          {/* Right Column: Running Score & Play-by-Play (3 cols) */}
-          <div className="lg:col-span-3 space-y-4">
+          {/* Right Column: Running Score Live (Kanan-Kiri Home & Away Style) */}
+          <div className="lg:col-span-5 space-y-4">
             <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <span className="text-xs font-bold text-slate-800">Running Score Live</span>
-                <span className="text-[10px] font-semibold text-slate-400">
-                  {goalEvents.length} Gol Tercipta
-                </span>
+              {/* Header Box */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                    <Flame className="w-4 h-4 text-amber-500" />
+                    <span>Running Score Live</span>
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                    {rawGoalEvents.length} Gol
+                  </span>
+                </div>
+
+                {/* Controls: Mode Switcher & Order Toggle */}
+                <div className="flex items-center gap-1.5">
+                  <div className="flex p-0.5 bg-slate-100 rounded-lg border border-slate-200 text-[10px] font-bold">
+                    <button
+                      onClick={() => setRunningScoreStyle('SPLIT_TIMELINE')}
+                      className={`px-2 py-1 rounded transition flex items-center gap-1 ${
+                        runningScoreStyle === 'SPLIT_TIMELINE'
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                      title="Gaya Timeline Kanan Kiri (Home di Kiri, Away di Kanan)"
+                    >
+                      <span>Kanan-Kiri</span>
+                    </button>
+                    <button
+                      onClick={() => setRunningScoreStyle('DUAL_COLUMN')}
+                      className={`px-2 py-1 rounded transition flex items-center gap-1 ${
+                        runningScoreStyle === 'DUAL_COLUMN'
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                      title="Gaya Dua Kolom Berdampingan"
+                    >
+                      <Columns className="w-3 h-3" />
+                      <span>2 Kolom</span>
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() =>
+                      setRunningScoreOrder(
+                        runningScoreOrder === 'NEWEST_FIRST' ? 'CHRONOLOGICAL' : 'NEWEST_FIRST'
+                      )
+                    }
+                    className="p-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-[10px] font-bold flex items-center gap-1"
+                    title={
+                      runningScoreOrder === 'NEWEST_FIRST'
+                        ? 'Urutan: Gol Terbaru di Atas'
+                        : 'Urutan: Kronologis dari Menit Awal'
+                    }
+                  >
+                    <ArrowUpDown className="w-3 h-3" />
+                    <span className="hidden sm:inline">
+                      {runningScoreOrder === 'NEWEST_FIRST' ? 'Terbaru' : 'Awal'}
+                    </span>
+                  </button>
+                </div>
               </div>
 
-              {goalEvents.length === 0 ? (
-                <div className="text-center py-10 text-slate-400 text-xs">
-                  Belum ada gol tercatat.
+              {/* Team Matchup Score Bar */}
+              <div className="grid grid-cols-2 gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                {/* Home Team (Left) */}
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-blue-600 text-white shrink-0">
+                    HOME
+                  </span>
+                  <div className="truncate min-w-0">
+                    <span className="font-bold text-slate-800 truncate block">
+                      {match.teamA.name}
+                    </span>
+                  </div>
+                  <span className="ml-auto font-mono font-black text-sm text-blue-700 bg-blue-100 px-2 py-0.5 rounded shrink-0">
+                    {match.scoreTeamA}
+                  </span>
                 </div>
-              ) : (
-                <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
-                  {goalEvents.map((g) => {
+
+                {/* Away Team (Right) */}
+                <div className="flex items-center gap-2 justify-end border-l border-slate-200 pl-2 min-w-0">
+                  <span className="font-mono font-black text-sm text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded shrink-0">
+                    {match.scoreTeamB}
+                  </span>
+                  <div className="truncate text-right min-w-0">
+                    <span className="font-bold text-slate-800 truncate block">
+                      {match.teamB.name}
+                    </span>
+                  </div>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-600 text-white shrink-0">
+                    AWAY
+                  </span>
+                </div>
+              </div>
+
+              {/* Empty state */}
+              {rawGoalEvents.length === 0 ? (
+                <div className="text-center py-12 text-slate-400 text-xs space-y-1">
+                  <Target className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                  <p className="font-semibold text-slate-600">Belum ada gol tercatat</p>
+                  <p className="text-[11px] text-slate-400">
+                    Catat aksi tembakan Made untuk melihat alur running score live.
+                  </p>
+                </div>
+              ) : runningScoreStyle === 'SPLIT_TIMELINE' ? (
+                /* STYLE 1: TIMELINE KANAN - KIRI */
+                <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+                  {sortedGoalEvents.map((g) => {
                     const isTeamA = g.teamId === match.teamA.id;
+                    const isTeamB = g.teamId === match.teamB.id;
                     const isMale = g.playerGender === 'MALE';
+                    const actionInfo = getActionTypeLabel(g.actionType);
+
+                    // Home Goal (Team A) -> Sisi KIRI
+                    if (isTeamA) {
+                      return (
+                        <div key={g.id} className="flex justify-start w-full animate-in fade-in">
+                          <div className="w-full max-w-[92%] sm:max-w-[88%] rounded-xl p-2.5 border border-blue-200/90 border-l-4 border-l-blue-600 bg-gradient-to-r from-blue-50/90 via-blue-50/40 to-white shadow-xs space-y-1.5">
+                            {/* Header: Home Tag, Gender, Player Name, Action, Time */}
+                            <div className="flex items-center justify-between gap-1.5 text-xs">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-blue-600 text-white uppercase tracking-wider shrink-0">
+                                  HOME
+                                </span>
+                                <span
+                                  className={`w-4 h-4 rounded text-[9px] font-black flex items-center justify-center shrink-0 ${
+                                    isMale ? 'bg-blue-600 text-white' : 'bg-rose-500 text-white'
+                                  }`}
+                                >
+                                  {isMale ? 'L' : 'P'}
+                                </span>
+                                <span className="font-extrabold text-slate-900 truncate">
+                                  #{g.playerJersey} {g.playerName}
+                                </span>
+                              </div>
+
+                              <span className="text-[10px] font-mono text-slate-500 shrink-0 font-bold">
+                                P{g.period} • {formatTime(g.gameTimeSeconds)}
+                              </span>
+                            </div>
+
+                            {/* Middle: Action Badge + Attribution Assist & DP */}
+                            <div className="flex flex-wrap items-center gap-2 pt-0.5 text-[10px]">
+                              <span
+                                className={`px-1.5 py-0.5 rounded font-black border text-[9px] ${actionInfo.style}`}
+                              >
+                                {actionInfo.label}
+                              </span>
+
+                              {/* Assist */}
+                              {g.assistPlayerName ? (
+                                <span className="text-amber-800 font-semibold flex items-center gap-1 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                  <Award className="w-3 h-3 text-amber-600 shrink-0" />
+                                  <span>Assist: #{g.assistPlayerJersey} {g.assistPlayerName}</span>
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 italic">Solo (No Assist)</span>
+                              )}
+
+                              {/* DP */}
+                              <span className="text-slate-600 flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded">
+                                <Shield className="w-3 h-3 text-slate-400 shrink-0" />
+                                <span>
+                                  DP: {g.opponentPlayerJersey ? `#${g.opponentPlayerJersey} ${g.opponentPlayerName}` : 'Tanpa Penjaga'}
+                                </span>
+                              </span>
+                            </div>
+
+                            {/* Footer: Running Score Box Yellow */}
+                            <div className="flex items-center justify-between pt-1 border-t border-blue-100 text-[11px]">
+                              <span className="text-[10px] text-slate-500 font-semibold">
+                                Skor Kumulatif:{' '}
+                                <span className="font-mono font-bold text-slate-800">
+                                  ({g.runningScoreA} - {g.runningScoreB})
+                                </span>
+                              </span>
+                              <div className="bg-[#FFFF00] text-slate-950 font-black font-mono text-xs px-2.5 py-0.5 rounded border border-yellow-500 shadow-xs">
+                                SCORE: {g.runningScoreA}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Away Goal (Team B) -> Sisi KANAN
+                    if (isTeamB) {
+                      return (
+                        <div key={g.id} className="flex justify-end w-full animate-in fade-in">
+                          <div className="w-full max-w-[92%] sm:max-w-[88%] rounded-xl p-2.5 border border-emerald-200/90 border-r-4 border-r-emerald-600 bg-gradient-to-l from-emerald-50/90 via-emerald-50/40 to-white shadow-xs space-y-1.5 text-right">
+                            {/* Header: Time, Action, Player Name, Gender, Away Tag */}
+                            <div className="flex items-center justify-between gap-1.5 text-xs">
+                              <span className="text-[10px] font-mono text-slate-500 shrink-0 font-bold">
+                                P{g.period} • {formatTime(g.gameTimeSeconds)}
+                              </span>
+
+                              <div className="flex items-center gap-1.5 truncate justify-end">
+                                <span className="font-extrabold text-slate-900 truncate">
+                                  #{g.playerJersey} {g.playerName}
+                                </span>
+                                <span
+                                  className={`w-4 h-4 rounded text-[9px] font-black flex items-center justify-center shrink-0 ${
+                                    isMale ? 'bg-blue-600 text-white' : 'bg-rose-500 text-white'
+                                  }`}
+                                >
+                                  {isMale ? 'L' : 'P'}
+                                </span>
+                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-600 text-white uppercase tracking-wider shrink-0">
+                                  AWAY
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Middle: Attribution Assist & DP + Action Badge */}
+                            <div className="flex flex-wrap items-center justify-end gap-2 pt-0.5 text-[10px]">
+                              {/* DP */}
+                              <span className="text-slate-600 flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded">
+                                <span>
+                                  DP: {g.opponentPlayerJersey ? `#${g.opponentPlayerJersey} ${g.opponentPlayerName}` : 'Tanpa Penjaga'}
+                                </span>
+                                <Shield className="w-3 h-3 text-slate-400 shrink-0" />
+                              </span>
+
+                              {/* Assist */}
+                              {g.assistPlayerName ? (
+                                <span className="text-amber-800 font-semibold flex items-center gap-1 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                  <span>Assist: #{g.assistPlayerJersey} {g.assistPlayerName}</span>
+                                  <Award className="w-3 h-3 text-amber-600 shrink-0" />
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 italic">Solo (No Assist)</span>
+                              )}
+
+                              <span
+                                className={`px-1.5 py-0.5 rounded font-black border text-[9px] ${actionInfo.style}`}
+                              >
+                                {actionInfo.label}
+                              </span>
+                            </div>
+
+                            {/* Footer: Running Score Box Yellow */}
+                            <div className="flex items-center justify-between pt-1 border-t border-emerald-100 text-[11px]">
+                              <div className="bg-[#FFFF00] text-slate-950 font-black font-mono text-xs px-2.5 py-0.5 rounded border border-yellow-500 shadow-xs">
+                                SCORE: {g.runningScoreB}
+                              </div>
+                              <span className="text-[10px] text-slate-500 font-semibold">
+                                Skor Kumulatif:{' '}
+                                <span className="font-mono font-bold text-slate-800">
+                                  ({g.runningScoreA} - {g.runningScoreB})
+                                </span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Team C (If 3-team match) -> Sisi TENGAH
                     return (
-                      <div
-                        key={g.id}
-                        className={`p-2.5 rounded-lg border flex items-center justify-between text-xs ${
-                          isTeamA
-                            ? 'bg-blue-50/60 border-blue-200'
-                            : 'bg-emerald-50/60 border-emerald-200'
-                        }`}
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className={`w-4 h-4 rounded text-[10px] font-black flex items-center justify-center ${
-                                isMale ? 'bg-blue-600 text-white' : 'bg-rose-500 text-white'
-                              }`}
-                            >
-                              {isMale ? 'L' : 'P'}
+                      <div key={g.id} className="flex justify-center w-full animate-in fade-in">
+                        <div className="w-full max-w-[92%] sm:max-w-[88%] rounded-xl p-2.5 border border-amber-300 border-y-2 border-y-amber-600 bg-amber-50/90 shadow-xs space-y-1.5 text-center">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-600 text-white uppercase">
+                              TEAM C
                             </span>
-                            <span className="font-bold text-slate-900">{g.playerName}</span>
+                            <span className="font-extrabold text-slate-900">
+                              #{g.playerJersey} {g.playerName}
+                            </span>
                             <span className="text-[10px] font-mono text-slate-500">
-                              {formatTime(g.gameTimeSeconds)}
+                              P{g.period} • {formatTime(g.gameTimeSeconds)}
                             </span>
                           </div>
-
-                          {/* Assist attribution */}
-                          {g.assistPlayerName && (
-                            <p className="text-[10px] text-amber-800 font-semibold flex items-center gap-1">
-                              <Award className="w-3 h-3 text-amber-600" />
-                              <span>Assist: #{g.assistPlayerJersey} {g.assistPlayerName}</span>
-                            </p>
-                          )}
-
-                          {/* DP (Defended) attribution */}
-                          <p className="text-[10px] text-slate-600">
-                            DP: {g.opponentPlayerJersey ? `#${g.opponentPlayerJersey} ${g.opponentPlayerName}` : 'Tanpa Penjaga'}
-                          </p>
-                        </div>
-
-                        <div className="bg-amber-300 font-mono font-black text-sm px-2.5 py-1 rounded shadow-sm text-slate-950">
-                          {isTeamA ? g.runningScoreA : g.runningScoreB}
+                          <div className="flex items-center justify-center gap-2 text-[10px]">
+                            <span className={`px-1.5 py-0.5 rounded font-black border text-[9px] ${actionInfo.style}`}>
+                              {actionInfo.label}
+                            </span>
+                            {g.assistPlayerName && (
+                              <span className="text-amber-800 font-semibold">
+                                Assist: #{g.assistPlayerJersey} {g.assistPlayerName}
+                              </span>
+                            )}
+                            <span className="text-slate-600">
+                              DP: {g.opponentPlayerJersey ? `#${g.opponentPlayerJersey} ${g.opponentPlayerName}` : 'Tanpa DP'}
+                            </span>
+                          </div>
+                          <div className="flex justify-center pt-1 border-t border-amber-200">
+                            <span className="bg-[#FFFF00] text-slate-950 font-black font-mono text-xs px-3 py-0.5 rounded border border-yellow-500 shadow-xs">
+                              SCORE: {g.runningScoreC}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     );
                   })}
+                </div>
+              ) : (
+                /* STYLE 2: DUAL COLUMN (2 KOLOM BERDAMPINGAN HOME | AWAY) */
+                <div className="grid grid-cols-2 gap-2.5 max-h-[500px] overflow-y-auto pr-1">
+                  {/* Left Column: Home Team Goals */}
+                  <div className="space-y-2">
+                    <div className="bg-blue-600 text-white text-[11px] font-black p-1.5 rounded-lg text-center uppercase tracking-wide truncate shadow-xs">
+                      {match.teamA.name} ({goalsTeamA.length})
+                    </div>
+                    {goalsTeamA.length === 0 ? (
+                      <div className="text-center py-8 text-slate-400 text-[11px] border border-dashed border-slate-200 rounded-lg">
+                        Belum ada gol
+                      </div>
+                    ) : (
+                      goalsTeamA.map((g) => {
+                        const isMale = g.playerGender === 'MALE';
+                        const actionInfo = getActionTypeLabel(g.actionType);
+                        return (
+                          <div
+                            key={g.id}
+                            className="p-2 rounded-lg border border-blue-200 bg-blue-50/70 space-y-1.5 text-left text-xs shadow-xs"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="bg-[#FFFF00] text-slate-950 font-black font-mono text-[11px] px-1.5 py-0.5 rounded border border-yellow-500">
+                                SCORE #{g.runningScoreA}
+                              </span>
+                              <span className="text-[10px] font-mono text-slate-500">
+                                {formatTime(g.gameTimeSeconds)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 font-bold text-slate-900 truncate">
+                              <span
+                                className={`w-3.5 h-3.5 rounded text-[8px] font-black flex items-center justify-center shrink-0 ${
+                                  isMale ? 'bg-blue-600 text-white' : 'bg-rose-500 text-white'
+                                }`}
+                              >
+                                {isMale ? 'L' : 'P'}
+                              </span>
+                              <span className="truncate">#{g.playerJersey} {g.playerName}</span>
+                            </div>
+                            <div className="text-[9px] text-slate-500 flex items-center gap-1">
+                              <span className={`px-1 py-0.2 rounded font-bold border ${actionInfo.style}`}>
+                                {actionInfo.label}
+                              </span>
+                            </div>
+                            {g.assistPlayerName && (
+                              <p className="text-[9px] text-amber-800 font-semibold truncate flex items-center gap-1">
+                                <Award className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                                <span className="truncate">Ast: #{g.assistPlayerJersey} {g.assistPlayerName}</span>
+                              </p>
+                            )}
+                            <p className="text-[9px] text-slate-600 truncate flex items-center gap-1">
+                              <Shield className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                              <span className="truncate">
+                                DP: {g.opponentPlayerJersey ? `#${g.opponentPlayerJersey} ${g.opponentPlayerName}` : 'Tanpa DP'}
+                              </span>
+                            </p>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Right Column: Away Team Goals */}
+                  <div className="space-y-2">
+                    <div className="bg-emerald-600 text-white text-[11px] font-black p-1.5 rounded-lg text-center uppercase tracking-wide truncate shadow-xs">
+                      {match.teamB.name} ({goalsTeamB.length})
+                    </div>
+                    {goalsTeamB.length === 0 ? (
+                      <div className="text-center py-8 text-slate-400 text-[11px] border border-dashed border-slate-200 rounded-lg">
+                        Belum ada gol
+                      </div>
+                    ) : (
+                      goalsTeamB.map((g) => {
+                        const isMale = g.playerGender === 'MALE';
+                        const actionInfo = getActionTypeLabel(g.actionType);
+                        return (
+                          <div
+                            key={g.id}
+                            className="p-2 rounded-lg border border-emerald-200 bg-emerald-50/70 space-y-1.5 text-left text-xs shadow-xs"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="bg-[#FFFF00] text-slate-950 font-black font-mono text-[11px] px-1.5 py-0.5 rounded border border-yellow-500">
+                                SCORE #{g.runningScoreB}
+                              </span>
+                              <span className="text-[10px] font-mono text-slate-500">
+                                {formatTime(g.gameTimeSeconds)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 font-bold text-slate-900 truncate">
+                              <span
+                                className={`w-3.5 h-3.5 rounded text-[8px] font-black flex items-center justify-center shrink-0 ${
+                                  isMale ? 'bg-blue-600 text-white' : 'bg-rose-500 text-white'
+                                }`}
+                              >
+                                {isMale ? 'L' : 'P'}
+                              </span>
+                              <span className="truncate">#{g.playerJersey} {g.playerName}</span>
+                            </div>
+                            <div className="text-[9px] text-slate-500 flex items-center gap-1">
+                              <span className={`px-1 py-0.2 rounded font-bold border ${actionInfo.style}`}>
+                                {actionInfo.label}
+                              </span>
+                            </div>
+                            {g.assistPlayerName && (
+                              <p className="text-[9px] text-amber-800 font-semibold truncate flex items-center gap-1">
+                                <Award className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                                <span className="truncate">Ast: #{g.assistPlayerJersey} {g.assistPlayerName}</span>
+                              </p>
+                            )}
+                            <p className="text-[9px] text-slate-600 truncate flex items-center gap-1">
+                              <Shield className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                              <span className="truncate">
+                                DP: {g.opponentPlayerJersey ? `#${g.opponentPlayerJersey} ${g.opponentPlayerName}` : 'Tanpa DP'}
+                              </span>
+                            </p>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               )}
             </div>
