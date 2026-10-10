@@ -135,3 +135,18 @@ export interface MatchState {
   lineups: MatchLineup[];
   events: MatchEvent[];
 }
+
+/** Draft pemain pada form setup (nomor punggung boleh kosong saat diketik). */
+export interface PlayerDraft {
+  id: string;
+  jerseyNumber: number | '';
+  fullName: string;
+  gender: Gender;
+}
+
+/** Draft tim pada form setup. */
+export interface TeamDraft {
+  name: string;
+  players: PlayerDraft[];
+}
+

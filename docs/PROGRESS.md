@@ -51,7 +51,15 @@
   - Validasi ketat gender mixed-sports korfball (K8: 4L & 4P; K4: 2L & 2P) beserta badge visual [L] dan [P] di seluruh antarmuka.
   - Implementasi Borang View lengkap dengan tabel Running Score berdampingan di sisi kanan (DP | TIME | NAME | SCORE [Kuning] | SCORE [Kuning] | NAME | TIME | DP).
   - Implementasi Running Score Live di Layar Live View dengan gaya komparatif Kanan-Kiri (Home di sisi kiri dengan aksen biru, Away di sisi kanan dengan aksen hijau zamrud, kotak skor kuning #FFFF00, info Assist & DP, serta toggle mode 2 Kolom Berdampingan dan urutan waktu).
+  - **Refactoring Arsitektur Modular & Desain Corporate Minimalist**:
+    - Ekstraksi engine murni: `match-engine.ts`, `action-types.ts`, `lineup-rules.ts`, `match-factory.ts`, `bantul-roster.ts`.
+    - Pematuhan aturan AGENTS.md §3A: implementasi UUIDv4 (`id.ts`) untuk `client_event_id` dan ID entitas untuk menjamin idempotensi background sync.
+    - Custom hooks terisolasi: `useLiveMatch.ts`, `useMatchClock.ts`, `useMatchSetupForm.ts` dengan titik persistensi tunggal di IndexedDB.
+    - Pemecahan komponen terstruktur: `Scoreboard`, `TeamTabs`, `PlayerGrid`, `ActionPad`, `RunningScoreFeed`, `GoalAttributionModal`, `ReboundModal`, `BorangMatrixView`, `MatchConfigForm`, `TeamRosterSection`.
+    - Dekomposisi god components: `page.tsx` live match berkurang drastis dari 1.824 baris menjadi ~230 baris; `new/page.tsx` dari 735 baris menjadi ~125 baris.
+    - Penerapan design system Modern Minimalist (Corporate Navy `#0A1529` / `#1F3F7A`, Teal `#0D9488`, Amber `#F59E0B`, Yellow `#FFFF00`, font Inter + JetBrains Mono tabular angka).
   - Pengujian unit test kalkulator di `tests/test-calculator.ts` (100% lulus).
+  - Pengujian unit test match engine & lineup di `tests/test-match-engine.ts` (100% lulus 6/6).
   - Pengujian ekspor berkas Excel di `tests/test-excel-exporter.ts` (100% lulus).
   - Build produksi `npm run build` sukses 0 error.
   - Seluruh perubahan tercatat di Git branch `main`.

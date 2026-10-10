@@ -1,11 +1,25 @@
 import type { Metadata } from 'next';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import Link from 'next/link';
-import { Activity, PlusCircle, Trophy } from 'lucide-react';
+import { PlusCircle, Trophy } from 'lucide-react';
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'KorfStats Bantul — Pencatatan Statistik Korfball',
-  description: 'Aplikasi pencatatan score sheet pertandingan dan evaluasi atlet Korfball Kabupaten Bantul',
+  description:
+    'Aplikasi pencatatan score sheet pertandingan real-time dan evaluasi performa atlet Korfball Kabupaten Bantul',
 };
 
 export default function RootLayout({
@@ -14,43 +28,47 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id">
-      <body className="bg-slate-50 text-slate-900 min-h-screen flex flex-col font-sans antialiased">
-        <header className="bg-slate-900 text-white shadow-md sticky top-0 z-50">
+    <html lang="id" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+      <body className="bg-canvas text-slate-900 min-h-screen flex flex-col font-sans antialiased selection:bg-brand-100 selection:text-brand-900">
+        {/* Corporate Minimalist Header */}
+        <header className="bg-brand-950 text-white shadow-card sticky top-0 z-50 border-b border-brand-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            {/* Brand Logo & Name */}
             <Link href="/" className="flex items-center space-x-3 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-sky-500 flex items-center justify-center font-black text-xl text-slate-900 shadow-sm group-hover:scale-105 transition-transform">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-500 to-teal-500 flex items-center justify-center font-black text-lg text-white shadow-xs group-hover:scale-105 transition-transform">
                 K
               </div>
               <div>
-                <span className="text-lg font-bold tracking-tight text-white block">
-                  KorfStats <span className="text-amber-400">Bantul</span>
+                <span className="text-base sm:text-lg font-black tracking-tight text-white block">
+                  KorfStats <span className="text-amber-400 font-bold">Bantul</span>
                 </span>
-                <span className="text-xs text-slate-400 block -mt-1 font-medium">
+                <span className="text-[11px] text-slate-400 block -mt-1 font-medium">
                   Official Score Sheet & Match Log
                 </span>
               </div>
             </Link>
 
-            <nav className="flex items-center space-x-2 sm:space-x-4">
+            {/* Navigation Actions */}
+            <nav className="flex items-center space-x-2 sm:space-x-3">
               <Link
                 href="/"
-                className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 transition flex items-center gap-1.5"
               >
                 <Trophy className="w-4 h-4 text-amber-400" />
                 <span>Pertandingan</span>
               </Link>
               <Link
                 href="/matches/new"
-                className="px-3.5 py-1.5 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 transition flex items-center gap-1.5 shadow-sm hover:shadow"
+                className="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold bg-white text-brand-950 hover:bg-slate-100 transition flex items-center gap-1.5 shadow-xs"
               >
-                <PlusCircle className="w-4 h-4" />
+                <PlusCircle className="w-4 h-4 text-brand-700" />
                 <span>Mulai Game Baru</span>
               </Link>
             </nav>
           </div>
         </header>
 
+        {/* Main Content Area */}
         <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
           {children}
         </main>
