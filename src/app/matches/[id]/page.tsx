@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { localDb } from '@/lib/local-db/dexie-db';
 import { ActionType, MatchEvent, MatchState, Player } from '@/types/match';
 import { aggregatePlayerStatsFromEvents, getScoreSheetRowValues } from '@/lib/korf-engine/korf-calculator';
@@ -12,18 +12,17 @@ import {
   RotateCcw,
   Undo2,
   FileSpreadsheet,
-  CheckCircle,
-  Clock,
-  Shield,
+  Check,
   Target,
-  AlertTriangle,
+  Shield,
   Award,
+  Users,
+  CheckCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LiveMatchPage() {
   const params = useParams();
-  const router = useRouter();
   const matchId = params.id as string;
 
   const [match, setMatch] = useState<MatchState | null>(null);
@@ -34,9 +33,14 @@ export default function LiveMatchPage() {
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>('');
   const [viewMode, setViewMode] = useState<'ACTIONS' | 'BORANG'>('ACTIONS');
 
-  // DP (Defended) Modal
-  const [dpModalOpen, setDpModalOpen] = useState(false);
-  const [pendingGoalEvent, setPendingGoalEvent] = useState<Partial<MatchEvent> | null>(null);
+  // FIBA LiveStats-style Goal Attribution Modal (Assist + DP Defender)
+  const [goalModalOpen, setGoalModalOpen] = useState(false);
+  const [pendingActionType, setPendingActionType] = useState<ActionType | null>(null);
+  const [selectedAssistPlayerId, setSelectedAssistPlayerId] = useState<string | null>(null);
+  const [selectedDpOpponentId, setSelectedDpOpponentId] = useState<string | null>(null);
+
+  // Rebound prompt on Miss (Optional quick follow-up)
+  const [reboundModalOpen, setReboundModalOpen] = useState(false);
 
   // Timer state
   const [isTimerRunning, setIsTimerRunning] = useState(false);
@@ -112,6 +116,14 @@ export default function LiveMatchPage() {
 
   const selectedPlayer = (currentTeam.players || []).find((p) => p.id === selectedPlayerId);
 
+  // Teammates of the selected player (for Assist option)
+  const availableTeammates = (currentTeam.players || []).filter(
+    (p) => p.id !== selectedPlayerId
+  );
+
+  // Opponents (for DP / Defended option)
+  const availableOpponents = currentOpponent.players || [];
+
   // Format digital clock mm:ss
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -119,7 +131,7 @@ export default function LiveMatchPage() {
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
-  // Record an action
+  // Handle action click
   const handleActionClick = async (actionType: ActionType) => {
     if (!match || !selectedPlayer) return;
 
@@ -131,26 +143,13 @@ export default function LiveMatchPage() {
       actionType === 'FREE_SHOT_M';
 
     if (isGoalMade) {
-      // Prompt for DP (Defended by which opponent)
-      const draftEvent: Partial<MatchEvent> = {
-        id: `ev-${Date.now()}-${Math.random()}`,
-        clientEventId: `client-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        matchId: match.id,
-        playerId: selectedPlayer.id,
-        teamId: selectedTeamId,
-        period: match.currentPeriod,
-        gameTimeSeconds: match.gameTimeSeconds,
-        actionType,
-        pointsAwarded: 1, // Korfball goal is always 1 point
-        recordedAt: new Date().toISOString(),
-        isDeleted: false,
-        playerName: selectedPlayer.fullName,
-        playerJersey: selectedPlayer.jerseyNumber,
-      };
-      setPendingGoalEvent(draftEvent);
-      setDpModalOpen(true);
+      // Buka modal alur FIBA LiveStats: Assist rekan setim & DP pemain lawan
+      setPendingActionType(actionType);
+      setSelectedAssistPlayerId(null);
+      setSelectedDpOpponentId(null);
+      setGoalModalOpen(true);
     } else {
-      // Non-scoring action
+      // Aksi non-scoring langsung
       await commitEvent({
         id: `ev-${Date.now()}-${Math.random()}`,
         clientEventId: `client-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -168,11 +167,24 @@ export default function LiveMatchPage() {
         isDeleted: false,
         playerName: selectedPlayer.fullName,
         playerJersey: selectedPlayer.jerseyNumber,
+        playerGender: selectedPlayer.gender,
       });
+
+      // Jika tembakan attempt (miss), buka opsi cepat penentu rebound
+      const isMissAttempt =
+        actionType === 'SHOOT_A' ||
+        actionType === 'RI_A' ||
+        actionType === 'PENALTY_A' ||
+        actionType === 'FREE_PASS_A' ||
+        actionType === 'FREE_SHOT_A';
+
+      if (isMissAttempt) {
+        setReboundModalOpen(true);
+      }
     }
   };
 
-  // Commit event and update running scores
+  // Commit event and atomik update running scores
   const commitEvent = async (event: MatchEvent) => {
     let nextScoreA = match.scoreTeamA;
     let nextScoreB = match.scoreTeamB;
@@ -203,23 +215,69 @@ export default function LiveMatchPage() {
     await localDb.matches.put(updatedMatch);
   };
 
-  // Finalize DP selection for goal
-  const handleSelectDp = async (opponentPlayer?: Player) => {
-    if (!pendingGoalEvent) return;
+  // Submit Goal Attribution (FIBA LiveStats flow)
+  const handleConfirmGoal = async () => {
+    if (!pendingActionType || !selectedPlayer) return;
 
-    const fullEvent: MatchEvent = {
-      ...(pendingGoalEvent as MatchEvent),
-      opponentPlayerId: opponentPlayer?.id,
-      opponentPlayerName: opponentPlayer?.fullName,
-      opponentPlayerJersey: opponentPlayer?.jerseyNumber,
+    const assistPlayer = availableTeammates.find((p) => p.id === selectedAssistPlayerId);
+    const opponentPlayer = availableOpponents.find((p) => p.id === selectedDpOpponentId);
+
+    const goalEvent: MatchEvent = {
+      id: `ev-${Date.now()}-${Math.random()}`,
+      clientEventId: `client-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      matchId: match.id,
+      playerId: selectedPlayer.id,
+      teamId: selectedTeamId,
+      period: match.currentPeriod,
+      gameTimeSeconds: match.gameTimeSeconds,
+      actionType: pendingActionType,
+      pointsAwarded: 1, // Korfball goal is always 1 point
       runningScoreA: match.scoreTeamA,
       runningScoreB: match.scoreTeamB,
       runningScoreC: match.scoreTeamC,
+      recordedAt: new Date().toISOString(),
+      isDeleted: false,
+      playerName: selectedPlayer.fullName,
+      playerJersey: selectedPlayer.jerseyNumber,
+      playerGender: selectedPlayer.gender,
+      assistPlayerId: assistPlayer?.id,
+      assistPlayerName: assistPlayer?.fullName,
+      assistPlayerJersey: assistPlayer?.jerseyNumber,
+      opponentPlayerId: opponentPlayer?.id,
+      opponentPlayerName: opponentPlayer?.fullName,
+      opponentPlayerJersey: opponentPlayer?.jerseyNumber,
     };
 
-    await commitEvent(fullEvent);
-    setDpModalOpen(false);
-    setPendingGoalEvent(null);
+    await commitEvent(goalEvent);
+    setGoalModalOpen(false);
+    setPendingActionType(null);
+    setSelectedAssistPlayerId(null);
+    setSelectedDpOpponentId(null);
+  };
+
+  // Handle Quick Rebound attribution after Miss
+  const handleAssignRebound = async (reboundPlayer: Player, isOffensive: boolean) => {
+    const actionType: ActionType = isOffensive ? 'REB_OFF' : 'REB_DEF';
+    await commitEvent({
+      id: `ev-${Date.now()}-${Math.random()}`,
+      clientEventId: `client-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      matchId: match.id,
+      playerId: reboundPlayer.id,
+      teamId: reboundPlayer.teamId,
+      period: match.currentPeriod,
+      gameTimeSeconds: match.gameTimeSeconds,
+      actionType,
+      pointsAwarded: 0,
+      runningScoreA: match.scoreTeamA,
+      runningScoreB: match.scoreTeamB,
+      runningScoreC: match.scoreTeamC,
+      recordedAt: new Date().toISOString(),
+      isDeleted: false,
+      playerName: reboundPlayer.fullName,
+      playerJersey: reboundPlayer.jerseyNumber,
+      playerGender: reboundPlayer.gender,
+    });
+    setReboundModalOpen(false);
   };
 
   // Quick Undo
@@ -257,7 +315,7 @@ export default function LiveMatchPage() {
     await localDb.matches.put(updatedMatch);
   };
 
-  // Download Excel
+  // Download Excel Score Sheet
   const handleExportExcel = async () => {
     if (!match) return;
     setExporting(true);
@@ -471,7 +529,7 @@ export default function LiveMatchPage() {
               )}
             </div>
 
-            {/* Players List */}
+            {/* Players List with L/P Gender Badge */}
             <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-2">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <span className="text-xs font-bold text-slate-700">Pilih Atlet Pelaku Aksi</span>
@@ -482,6 +540,7 @@ export default function LiveMatchPage() {
                 {(currentTeam.players || []).map((p) => {
                   const isSelected = p.id === selectedPlayerId;
                   const stats = aggregatePlayerStatsFromEvents(match.events, p.id);
+                  const isMale = p.gender === 'MALE';
                   return (
                     <button
                       key={p.id}
@@ -493,12 +552,22 @@ export default function LiveMatchPage() {
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-mono text-sm font-black">#{p.jerseyNumber}</span>
+                        <div className="flex items-center gap-1.5">
+                          {/* Gender Badge L / P */}
+                          <span
+                            className={`w-5 h-5 rounded text-[11px] font-black flex items-center justify-center ${
+                              isMale ? 'bg-blue-600 text-white' : 'bg-rose-500 text-white'
+                            }`}
+                          >
+                            {isMale ? 'L' : 'P'}
+                          </span>
+                          <span className="font-mono text-sm font-black">#{p.jerseyNumber}</span>
+                        </div>
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/10 font-mono font-bold">
                           {stats.totalPoints} Pts
                         </span>
                       </div>
-                      <p className="text-xs truncate font-medium mt-1">{p.fullName}</p>
+                      <p className="text-xs truncate font-medium mt-1.5">{p.fullName}</p>
                     </button>
                   );
                 })}
@@ -512,11 +581,22 @@ export default function LiveMatchPage() {
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <div>
                   <span className="text-xs text-slate-500 block">Pemain Terpilih:</span>
-                  <span className="text-sm font-extrabold text-slate-900">
-                    {selectedPlayer
-                      ? `#${selectedPlayer.jerseyNumber} — ${selectedPlayer.fullName}`
-                      : 'Pilih pemain terlebih dahulu'}
-                  </span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    {selectedPlayer && (
+                      <span
+                        className={`w-5 h-5 rounded text-[11px] font-black flex items-center justify-center ${
+                          selectedPlayer.gender === 'MALE' ? 'bg-blue-600 text-white' : 'bg-rose-500 text-white'
+                        }`}
+                      >
+                        {selectedPlayer.gender === 'MALE' ? 'L' : 'P'}
+                      </span>
+                    )}
+                    <span className="text-sm font-extrabold text-slate-900">
+                      {selectedPlayer
+                        ? `#${selectedPlayer.jerseyNumber} — ${selectedPlayer.fullName}`
+                        : 'Pilih pemain terlebih dahulu'}
+                    </span>
+                  </div>
                 </div>
                 <button
                   onClick={handleQuickUndo}
@@ -542,7 +622,7 @@ export default function LiveMatchPage() {
                     className="py-3 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm shadow transition active:scale-95 flex flex-col items-center justify-center"
                   >
                     <span>SHOOT MADE</span>
-                    <span className="text-[10px] font-medium text-emerald-100">+1 Poin</span>
+                    <span className="text-[10px] font-medium text-emerald-100">+1 Poin (Pilih Assist & DP)</span>
                   </button>
                   <button
                     onClick={() => handleActionClick('SHOOT_A')}
@@ -558,7 +638,7 @@ export default function LiveMatchPage() {
                     className="py-3 px-3 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-black text-xs sm:text-sm shadow transition active:scale-95 flex flex-col items-center justify-center"
                   >
                     <span>RUNNING IN MADE</span>
-                    <span className="text-[10px] font-medium text-teal-100">+1 Poin</span>
+                    <span className="text-[10px] font-medium text-teal-100">+1 Poin (Pilih Assist & DP)</span>
                   </button>
                   <button
                     onClick={() => handleActionClick('RI_A')}
@@ -642,7 +722,7 @@ export default function LiveMatchPage() {
                     onClick={() => handleActionClick('ASSIST')}
                     className="py-2.5 px-2 rounded-xl bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-800 font-bold text-xs transition active:scale-95"
                   >
-                    ASSIST
+                    ASSIST (Direct)
                   </button>
                   <button
                     onClick={() => handleActionClick('INTERCEPT')}
@@ -685,7 +765,7 @@ export default function LiveMatchPage() {
                 <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
                   {goalEvents.map((g) => {
                     const isTeamA = g.teamId === match.teamA.id;
-                    const teamName = isTeamA ? match.teamA.name : match.teamB.name;
+                    const isMale = g.playerGender === 'MALE';
                     return (
                       <div
                         key={g.id}
@@ -695,19 +775,36 @@ export default function LiveMatchPage() {
                             : 'bg-emerald-50/60 border-emerald-200'
                         }`}
                       >
-                        <div className="space-y-0.5">
+                        <div className="space-y-1">
                           <div className="flex items-center gap-1.5">
+                            <span
+                              className={`w-4 h-4 rounded text-[10px] font-black flex items-center justify-center ${
+                                isMale ? 'bg-blue-600 text-white' : 'bg-rose-500 text-white'
+                              }`}
+                            >
+                              {isMale ? 'L' : 'P'}
+                            </span>
                             <span className="font-bold text-slate-900">{g.playerName}</span>
                             <span className="text-[10px] font-mono text-slate-500">
                               {formatTime(g.gameTimeSeconds)}
                             </span>
                           </div>
+
+                          {/* Assist attribution */}
+                          {g.assistPlayerName && (
+                            <p className="text-[10px] text-amber-800 font-semibold flex items-center gap-1">
+                              <Award className="w-3 h-3 text-amber-600" />
+                              <span>Assist: #{g.assistPlayerJersey} {g.assistPlayerName}</span>
+                            </p>
+                          )}
+
+                          {/* DP (Defended) attribution */}
                           <p className="text-[10px] text-slate-600">
                             DP: {g.opponentPlayerJersey ? `#${g.opponentPlayerJersey} ${g.opponentPlayerName}` : 'Tanpa Penjaga'}
                           </p>
                         </div>
 
-                        <div className="bg-amber-300 font-mono font-black text-sm px-2 py-0.5 rounded shadow-sm text-slate-950">
+                        <div className="bg-amber-300 font-mono font-black text-sm px-2.5 py-1 rounded shadow-sm text-slate-950">
                           {isTeamA ? g.runningScoreA : g.runningScoreB}
                         </div>
                       </div>
@@ -720,44 +817,208 @@ export default function LiveMatchPage() {
         </div>
       )}
 
-      {/* DP (Defended) Modal */}
-      {dpModalOpen && pendingGoalEvent && (
+      {/* FIBA LiveStats-style Goal Attribution Modal: Assist & DP */}
+      {goalModalOpen && selectedPlayer && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100">
-            <div className="space-y-1">
-              <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                GOL BERHASIL DICATAT (+1 POIN)
-              </span>
-              <h3 className="text-lg font-extrabold text-slate-900">
-                Siapa Pemain Lawan yang Menjaga (DP)?
-              </h3>
-              <p className="text-xs text-slate-500">
-                Pilih atlet {currentOpponent.name} yang sedang menjaga saat {pendingGoalEvent.playerName} mencetak poin.
-              </p>
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 space-y-5 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 uppercase tracking-wide">
+                  GOL BERHASIL DICATAT (+1 POIN)
+                </span>
+                <h3 className="text-lg font-extrabold text-slate-900 mt-1">
+                  Atribusi Gol #{selectedPlayer.jerseyNumber} {selectedPlayer.fullName}
+                </h3>
+              </div>
+              <div className="text-right font-mono text-xs text-slate-400">
+                {formatTime(match.gameTimeSeconds)}
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1">
-              {(currentOpponent.players || []).map((opp) => (
+            {/* Section 1: Assist Teammate Selector */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <Award className="w-4 h-4 text-amber-500" />
+                <span>1. Umpan Matang (Assist) Oleh Rekan Setim?</span>
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 <button
-                  key={opp.id}
-                  onClick={() => handleSelectDp(opp)}
-                  className="p-2.5 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50 text-left transition flex items-center gap-2 group"
+                  type="button"
+                  onClick={() => setSelectedAssistPlayerId(null)}
+                  className={`p-2 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                    selectedAssistPlayerId === null
+                      ? 'bg-amber-500 border-amber-600 text-slate-950 shadow-sm'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                  }`}
                 >
-                  <span className="w-7 h-7 rounded-lg bg-slate-100 group-hover:bg-blue-600 group-hover:text-white font-mono font-bold text-xs flex items-center justify-center transition">
-                    #{opp.jerseyNumber}
-                  </span>
-                  <span className="text-xs font-bold text-slate-800 truncate">{opp.fullName}</span>
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  <span>Tanpa Assist (Solo)</span>
                 </button>
-              ))}
+                {availableTeammates.map((mate) => {
+                  const isSelected = selectedAssistPlayerId === mate.id;
+                  const isMale = mate.gender === 'MALE';
+                  return (
+                    <button
+                      key={mate.id}
+                      type="button"
+                      onClick={() => setSelectedAssistPlayerId(mate.id)}
+                      className={`p-2 rounded-xl border text-xs text-left transition flex items-center gap-2 ${
+                        isSelected
+                          ? 'bg-blue-600 border-blue-700 text-white shadow-sm font-bold'
+                          : 'bg-white border-slate-200 text-slate-800 hover:bg-blue-50'
+                      }`}
+                    >
+                      <span
+                        className={`w-5 h-5 rounded text-[10px] font-black flex items-center justify-center ${
+                          isMale ? 'bg-blue-800 text-white' : 'bg-rose-500 text-white'
+                        }`}
+                      >
+                        {isMale ? 'L' : 'P'}
+                      </span>
+                      <span className="font-mono font-bold">#{mate.jerseyNumber}</span>
+                      <span className="truncate">{mate.fullName}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-100 flex justify-end gap-2">
+            {/* Section 2: DP (Defended by opponent) Selector */}
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <Shield className="w-4 h-4 text-blue-600" />
+                <span>2. Dijaga Pemain Lawan Siapa (DP - Defended)?</span>
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedDpOpponentId(null)}
+                  className={`p-2 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                    selectedDpOpponentId === null
+                      ? 'bg-slate-800 border-slate-900 text-white shadow-sm'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>Tanpa Penjaga (-)</span>
+                </button>
+                {availableOpponents.map((opp) => {
+                  const isSelected = selectedDpOpponentId === opp.id;
+                  const isMale = opp.gender === 'MALE';
+                  return (
+                    <button
+                      key={opp.id}
+                      type="button"
+                      onClick={() => setSelectedDpOpponentId(opp.id)}
+                      className={`p-2 rounded-xl border text-xs text-left transition flex items-center gap-2 ${
+                        isSelected
+                          ? 'bg-emerald-600 border-emerald-700 text-white shadow-sm font-bold'
+                          : 'bg-white border-slate-200 text-slate-800 hover:bg-emerald-50'
+                      }`}
+                    >
+                      <span
+                        className={`w-5 h-5 rounded text-[10px] font-black flex items-center justify-center ${
+                          isMale ? 'bg-blue-800 text-white' : 'bg-rose-500 text-white'
+                        }`}
+                      >
+                        {isMale ? 'L' : 'P'}
+                      </span>
+                      <span className="font-mono font-bold">#{opp.jerseyNumber}</span>
+                      <span className="truncate">{opp.fullName}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="pt-3 border-t border-slate-100 flex justify-end gap-3">
               <button
                 type="button"
-                onClick={() => handleSelectDp(undefined)}
-                className="w-full py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+                onClick={() => {
+                  setGoalModalOpen(false);
+                  setPendingActionType(null);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
               >
-                Tanpa Penjaga / Bebas (-)
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmGoal}
+                className="px-6 py-2.5 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md transition flex items-center gap-2"
+              >
+                <Check className="w-4 h-4" />
+                <span>Simpan Gol & Running Score (+1 Poin)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Optional Rebound Prompt on Missed Shot */}
+      {reboundModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <div>
+                <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
+                  TEMBAKAN GAGAL (MISS)
+                </span>
+                <h4 className="text-base font-bold text-slate-900 mt-1">Siapa Mengambil Rebound?</h4>
+              </div>
+              <button
+                onClick={() => setReboundModalOpen(false)}
+                className="text-xs font-semibold text-slate-400 hover:text-slate-600"
+              >
+                Lewati (Bola Keluar)
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <p className="text-[11px] font-bold text-blue-700 uppercase mb-1">
+                  Rebound Offensive ({currentTeam.name})
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  {(currentTeam.players || []).map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => handleAssignRebound(p, true)}
+                      className="p-1.5 rounded-lg border border-slate-200 hover:bg-blue-50 text-left text-xs truncate font-medium flex items-center gap-1"
+                    >
+                      <span className="font-mono font-bold">#{p.jerseyNumber}</span>
+                      <span className="truncate">{p.fullName.split(' ')[0]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[11px] font-bold text-emerald-700 uppercase mb-1">
+                  Rebound Defensive ({currentOpponent.name})
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  {(currentOpponent.players || []).map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => handleAssignRebound(p, false)}
+                      className="p-1.5 rounded-lg border border-slate-200 hover:bg-emerald-50 text-left text-xs truncate font-medium flex items-center gap-1"
+                    >
+                      <span className="font-mono font-bold">#{p.jerseyNumber}</span>
+                      <span className="truncate">{p.fullName.split(' ')[0]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                onClick={() => setReboundModalOpen(false)}
+                className="w-full py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700"
+              >
+                Tutup / Lewati Tanpa Rebound
               </button>
             </div>
           </div>
@@ -812,10 +1073,20 @@ function BorangMatrixView({ match }: { match: MatchState }) {
             {(match.teamA.players || []).map((p) => {
               const stats = aggregatePlayerStatsFromEvents(match.events, p.id);
               const r = getScoreSheetRowValues(stats);
+              const isMale = p.gender === 'MALE';
               return (
                 <tr key={p.id} className="hover:bg-slate-50">
                   <td className="border border-slate-400 p-1 font-mono font-bold">{p.jerseyNumber}</td>
-                  <td className="border border-slate-400 p-1 text-left font-medium">{p.fullName}</td>
+                  <td className="border border-slate-400 p-1 text-left font-medium">
+                    <span
+                      className={`inline-block w-4 h-4 rounded text-[9px] font-black text-center leading-4 mr-1.5 ${
+                        isMale ? 'bg-blue-600 text-white' : 'bg-rose-500 text-white'
+                      }`}
+                    >
+                      {isMale ? 'L' : 'P'}
+                    </span>
+                    {p.fullName}
+                  </td>
                   <td className="border border-slate-400 p-1">{r.shootM || ''}</td>
                   <td className="border border-slate-400 p-1">{r.shootA || ''}</td>
                   <td className="border border-slate-400 p-1">{r.runningInM || ''}</td>
@@ -867,10 +1138,20 @@ function BorangMatrixView({ match }: { match: MatchState }) {
             {(match.teamB.players || []).map((p) => {
               const stats = aggregatePlayerStatsFromEvents(match.events, p.id);
               const r = getScoreSheetRowValues(stats);
+              const isMale = p.gender === 'MALE';
               return (
                 <tr key={p.id} className="hover:bg-slate-50">
                   <td className="border border-slate-400 p-1 font-mono font-bold">{p.jerseyNumber}</td>
-                  <td className="border border-slate-400 p-1 text-left font-medium">{p.fullName}</td>
+                  <td className="border border-slate-400 p-1 text-left font-medium">
+                    <span
+                      className={`inline-block w-4 h-4 rounded text-[9px] font-black text-center leading-4 mr-1.5 ${
+                        isMale ? 'bg-blue-600 text-white' : 'bg-rose-500 text-white'
+                      }`}
+                    >
+                      {isMale ? 'L' : 'P'}
+                    </span>
+                    {p.fullName}
+                  </td>
                   <td className="border border-slate-400 p-1">{r.shootM || ''}</td>
                   <td className="border border-slate-400 p-1">{r.shootA || ''}</td>
                   <td className="border border-slate-400 p-1">{r.runningInM || ''}</td>

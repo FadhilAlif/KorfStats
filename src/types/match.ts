@@ -1,6 +1,7 @@
 export type MatchFormat = 'K4' | 'K8';
 export type TeamStructure = 'TWO_TEAM' | 'THREE_TEAM';
 export type MatchStatus = 'SCHEDULED' | 'LIVE' | 'COMPLETED';
+export type Gender = 'MALE' | 'FEMALE';
 
 export type ActionType =
   | 'SHOOT_M'
@@ -26,7 +27,7 @@ export interface Player {
   fullName: string;
   nickname?: string;
   jerseyNumber: number;
-  gender: 'MALE' | 'FEMALE';
+  gender: Gender; // MALE = Laki-laki (L), FEMALE = Perempuan (P)
   jerseySize?: string;
   primaryPosition?: string;
   isActive: boolean;
@@ -60,11 +61,16 @@ export interface MatchEvent {
   period: number;
   gameTimeSeconds: number;
   actionType: ActionType;
-  shotPosition?: number;      // 1 to 8 (reserved for Phase 2)
-  shotDistanceMeter?: number; // 2, 4, 6, 8 (reserved for Phase 2)
+  shotPosition?: number;       // 1 to 8 (reserved for Phase 2)
+  shotDistanceMeter?: number;  // 2, 4, 6, 8 (reserved for Phase 2)
   turnoverType?: string;
-  opponentPlayerId?: string;  // DP (Defended by)
-  pointsAwarded: number;      // 1 or 0
+  opponentPlayerId?: string;   // DP (Defended by opponent)
+  opponentPlayerName?: string;
+  opponentPlayerJersey?: number;
+  assistPlayerId?: string;     // Assist by teammate
+  assistPlayerName?: string;
+  assistPlayerJersey?: number;
+  pointsAwarded: number;       // 1 or 0
   runningScoreA: number;
   runningScoreB: number;
   runningScoreC: number;
@@ -73,8 +79,7 @@ export interface MatchEvent {
   // joined fields for display
   playerName?: string;
   playerJersey?: number;
-  opponentPlayerName?: string;
-  opponentPlayerJersey?: number;
+  playerGender?: Gender;
 }
 
 export interface PlayerStats {

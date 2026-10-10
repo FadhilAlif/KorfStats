@@ -47,7 +47,22 @@ export function calculatePercentage(made: number, attempt: number): number {
 /**
  * Menghitung formula turunan performa sesuai spesifikasi baku STATISTIK GAME BANTUL.xlsx
  */
-export function calculateDerivedStats(stats: Omit<PlayerStats, 'fgPercentage' | 'riPercentage' | 'fpPercentage' | 'pPercentage' | 'fsPercentage' | 'positiveScore' | 'negativeScore' | 'totalScore' | 'totalPositiveActions' | 'efficiency' | 'totalPoints'>): PlayerStats {
+export function calculateDerivedStats(
+  stats: Omit<
+    PlayerStats,
+    | 'fgPercentage'
+    | 'riPercentage'
+    | 'fpPercentage'
+    | 'pPercentage'
+    | 'fsPercentage'
+    | 'positiveScore'
+    | 'negativeScore'
+    | 'totalScore'
+    | 'totalPositiveActions'
+    | 'efficiency'
+    | 'totalPoints'
+  >
+): PlayerStats {
   const fgPercentage = calculatePercentage(stats.sm, stats.sa);
   const riPercentage = calculatePercentage(stats.rim, stats.ria);
   const fpPercentage = calculatePercentage(stats.fpm, stats.fpa);
@@ -141,7 +156,7 @@ export function aggregatePlayerStatsFromEvents(events: MatchEvent[], playerId: s
   };
 
   for (const event of activeEvents) {
-    // Check if player is the actor
+    // 1. Jika pemain adalah pelaku aksi utama (Shooter / Defender / Passer)
     if (event.playerId === playerId) {
       switch (event.actionType) {
         case 'SHOOT_M':
@@ -200,7 +215,12 @@ export function aggregatePlayerStatsFromEvents(events: MatchEvent[], playerId: s
       }
     }
 
-    // Check if player is the defender on opponent goal (DP - Defended counter)
+    // 2. Jika pemain memberikan assist pada tembakan rekan setim yang masuk (Goal Assist)
+    if (event.assistPlayerId === playerId && event.pointsAwarded > 0) {
+      raw.assist += 1;
+    }
+
+    // 3. Jika pemain adalah penjaga lawan saat gol tercipta (DP - Defended counter)
     if (event.opponentPlayerId === playerId && event.pointsAwarded > 0) {
       raw.defended += 1;
     }

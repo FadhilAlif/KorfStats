@@ -3,21 +3,51 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { localDb } from '@/lib/local-db/dexie-db';
-import { MatchFormat, MatchState, Player, Team, TeamStructure } from '@/types/match';
-import { ArrowLeft, Check, Plus, Trash2, Users, Trophy } from 'lucide-react';
+import { Gender, MatchFormat, MatchState, Player, Team, TeamStructure } from '@/types/match';
+import { ArrowLeft, Check, Plus, Trash2, Users, Trophy, Sparkles, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
 interface TempPlayer {
   id: string;
   jerseyNumber: number | '';
   fullName: string;
+  gender: Gender;
 }
+
+// Data Baku Atlet Korfball Kabupaten Bantul
+const OFFICIAL_BANTUL_MALE: { name: string; number: number }[] = [
+  { name: 'Didiv Wandha', number: 1 },
+  { name: 'Julius Rakha', number: 2 },
+  { name: 'Eduardus Guntur', number: 3 },
+  { name: 'Fadhil Alif', number: 4 },
+  { name: 'Aah Faqih', number: 5 },
+  { name: 'Dimas Bekti', number: 6 },
+  { name: 'Arma Machfud', number: 7 },
+  { name: 'Ilham Wibi', number: 8 },
+  { name: 'Ramdhan Rafy', number: 9 },
+  { name: 'Adesta', number: 10 },
+];
+
+const OFFICIAL_BANTUL_FEMALE: { name: string; number: number }[] = [
+  { name: 'Ririn Mulyasari', number: 11 },
+  { name: 'Maya Ratna', number: 12 },
+  { name: 'Viki Hidayah', number: 13 },
+  { name: 'Rukmi Rayi', number: 14 },
+  { name: 'Najwa Alya', number: 15 },
+  { name: 'Zahra Asyita', number: 16 },
+  { name: 'Thea', number: 17 },
+  { name: 'Lintang', number: 18 },
+  { name: 'Vanes', number: 19 },
+  { name: 'Nadia', number: 20 },
+];
 
 export default function NewMatchPage() {
   const router = useRouter();
 
   // Match setup form state
-  const [matchCode, setMatchCode] = useState(`GAME-${new Date().toISOString().slice(5, 10).replace('-', '')}-${Math.floor(Math.random() * 90 + 10)}`);
+  const [matchCode, setMatchCode] = useState(
+    `GAME-${new Date().toISOString().slice(5, 10).replace('-', '')}-${Math.floor(Math.random() * 90 + 10)}`
+  );
   const [venue, setVenue] = useState('GOR Sasana Krida Bantul');
   const [structure, setStructure] = useState<TeamStructure>('TWO_TEAM');
   const [format, setFormat] = useState<MatchFormat>('K8');
@@ -25,45 +55,111 @@ export default function NewMatchPage() {
   const [periodDuration, setPeriodDuration] = useState<number>(20);
 
   // Teams state
-  const [teamAName, setTeamAName] = useState('Bantul Putra/Putri A');
-  const [teamBName, setTeamBName] = useState('Bantul Putra/Putri B');
-  const [teamCName, setTeamCName] = useState('Bantul Scrimmage C');
+  const [teamAName, setTeamAName] = useState('Tim A (Bantul Merah)');
+  const [teamBName, setTeamBName] = useState('Tim B (Bantul Putih)');
+  const [teamCName, setTeamCName] = useState('Tim C (Bantul Hijau)');
 
-  // Player rosters
-  const [playersA, setPlayersA] = useState<TempPlayer[]>([
-    { id: 'pa-1', jerseyNumber: 1, fullName: 'Didiv Wandha P' },
-    { id: 'pa-2', jerseyNumber: 2, fullName: 'Julius Rakha Bowo' },
-    { id: 'pa-3', jerseyNumber: 3, fullName: 'Citra Wahyuningtyas' },
-    { id: 'pa-4', jerseyNumber: 4, fullName: 'Maya Ratna Ningrum' },
-    { id: 'pa-5', jerseyNumber: 5, fullName: 'Viki Hidayah' },
-    { id: 'pa-6', jerseyNumber: 6, fullName: 'Salsabila Dita' },
-    { id: 'pa-7', jerseyNumber: 7, fullName: 'Eduardus Guntur' },
-    { id: 'pa-8', jerseyNumber: 8, fullName: 'Isnaini Ayu' },
-  ]);
+  // Default clean state
+  const [playersA, setPlayersA] = useState<TempPlayer[]>([]);
+  const [playersB, setPlayersB] = useState<TempPlayer[]>([]);
+  const [playersC, setPlayersC] = useState<TempPlayer[]>([]);
 
-  const [playersB, setPlayersB] = useState<TempPlayer[]>([
-    { id: 'pb-1', jerseyNumber: 9, fullName: 'Rukmi Rayi' },
-    { id: 'pb-2', jerseyNumber: 10, fullName: 'Rizky Nugraheni' },
-    { id: 'pb-3', jerseyNumber: 11, fullName: 'Pinasty Dwi' },
-    { id: 'pb-4', jerseyNumber: 12, fullName: 'Hillery Bernassa' },
-    { id: 'pb-5', jerseyNumber: 13, fullName: 'Amelia Veronica' },
-    { id: 'pb-6', jerseyNumber: 14, fullName: 'Ririn Mulya' },
-    { id: 'pb-7', jerseyNumber: 15, fullName: 'Farrel Adhitama' },
-    { id: 'pb-8', jerseyNumber: 16, fullName: 'Ardan Rizky' },
-  ]);
+  // Validation warning state
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-  const [playersC, setPlayersC] = useState<TempPlayer[]>([
-    { id: 'pc-1', jerseyNumber: 17, fullName: 'Atlet Tim C 1' },
-    { id: 'pc-2', jerseyNumber: 18, fullName: 'Atlet Tim C 2' },
-    { id: 'pc-3', jerseyNumber: 19, fullName: 'Atlet Tim C 3' },
-    { id: 'pc-4', jerseyNumber: 20, fullName: 'Atlet Tim C 4' },
-  ]);
+  // Helper count L/P
+  const getGenderCount = (players: TempPlayer[]) => {
+    const validPlayers = players.filter((p) => p.fullName.trim() !== '');
+    const males = validPlayers.filter((p) => p.gender === 'MALE').length;
+    const females = validPlayers.filter((p) => p.gender === 'FEMALE').length;
+    return { males, females, total: validPlayers.length };
+  };
 
-  const addPlayer = (team: 'A' | 'B' | 'C') => {
+  const countA = getGenderCount(playersA);
+  const countB = getGenderCount(playersB);
+  const countC = getGenderCount(playersC);
+
+  // Opsi Muat Skuad Resmi Atlet Korfball Bantul
+  const handleSeedBantulSquad = () => {
+    if (structure === 'THREE_TEAM') {
+      // 3 Team format: K4 (minimal 2 L & 2 P per team)
+      setTeamAName('Bantul Scrimmage A');
+      setTeamBName('Bantul Scrimmage B');
+      setTeamCName('Bantul Scrimmage C');
+
+      setPlayersA([
+        { id: 'pa-1', jerseyNumber: OFFICIAL_BANTUL_MALE[0].number, fullName: OFFICIAL_BANTUL_MALE[0].name, gender: 'MALE' },
+        { id: 'pa-2', jerseyNumber: OFFICIAL_BANTUL_MALE[1].number, fullName: OFFICIAL_BANTUL_MALE[1].name, gender: 'MALE' },
+        { id: 'pa-3', jerseyNumber: OFFICIAL_BANTUL_FEMALE[0].number, fullName: OFFICIAL_BANTUL_FEMALE[0].name, gender: 'FEMALE' },
+        { id: 'pa-4', jerseyNumber: OFFICIAL_BANTUL_FEMALE[1].number, fullName: OFFICIAL_BANTUL_FEMALE[1].name, gender: 'FEMALE' },
+      ]);
+
+      setPlayersB([
+        { id: 'pb-1', jerseyNumber: OFFICIAL_BANTUL_MALE[2].number, fullName: OFFICIAL_BANTUL_MALE[2].name, gender: 'MALE' },
+        { id: 'pb-2', jerseyNumber: OFFICIAL_BANTUL_MALE[3].number, fullName: OFFICIAL_BANTUL_MALE[3].name, gender: 'MALE' },
+        { id: 'pb-3', jerseyNumber: OFFICIAL_BANTUL_FEMALE[2].number, fullName: OFFICIAL_BANTUL_FEMALE[2].name, gender: 'FEMALE' },
+        { id: 'pb-4', jerseyNumber: OFFICIAL_BANTUL_FEMALE[3].number, fullName: OFFICIAL_BANTUL_FEMALE[3].name, gender: 'FEMALE' },
+      ]);
+
+      setPlayersC([
+        { id: 'pc-1', jerseyNumber: OFFICIAL_BANTUL_MALE[4].number, fullName: OFFICIAL_BANTUL_MALE[4].name, gender: 'MALE' },
+        { id: 'pc-2', jerseyNumber: OFFICIAL_BANTUL_MALE[5].number, fullName: OFFICIAL_BANTUL_MALE[5].name, gender: 'MALE' },
+        { id: 'pc-3', jerseyNumber: OFFICIAL_BANTUL_FEMALE[4].number, fullName: OFFICIAL_BANTUL_FEMALE[4].name, gender: 'FEMALE' },
+        { id: 'pc-4', jerseyNumber: OFFICIAL_BANTUL_FEMALE[5].number, fullName: OFFICIAL_BANTUL_FEMALE[5].name, gender: 'FEMALE' },
+      ]);
+    } else {
+      // 2 Team format:
+      // K8 / K4: 5 Putra & 5 Putri untuk Tim A, 5 Putra & 5 Putri untuk Tim B
+      setTeamAName('Bantul Merah (A)');
+      setTeamBName('Bantul Putih (B)');
+
+      setPlayersA([
+        ...OFFICIAL_BANTUL_MALE.slice(0, 5).map((m, idx) => ({
+          id: `pa-m-${idx}`,
+          jerseyNumber: m.number,
+          fullName: m.name,
+          gender: 'MALE' as Gender,
+        })),
+        ...OFFICIAL_BANTUL_FEMALE.slice(0, 5).map((f, idx) => ({
+          id: `pa-f-${idx}`,
+          jerseyNumber: f.number,
+          fullName: f.name,
+          gender: 'FEMALE' as Gender,
+        })),
+      ]);
+
+      setPlayersB([
+        ...OFFICIAL_BANTUL_MALE.slice(5, 10).map((m, idx) => ({
+          id: `pb-m-${idx}`,
+          jerseyNumber: m.number,
+          fullName: m.name,
+          gender: 'MALE' as Gender,
+        })),
+        ...OFFICIAL_BANTUL_FEMALE.slice(5, 10).map((f, idx) => ({
+          id: `pb-f-${idx}`,
+          jerseyNumber: f.number,
+          fullName: f.name,
+          gender: 'FEMALE' as Gender,
+        })),
+      ]);
+    }
+    setValidationError(null);
+  };
+
+  // Opsi Bersihkan Form
+  const handleClearRoster = () => {
+    setPlayersA([]);
+    setPlayersB([]);
+    setPlayersC([]);
+    setValidationError(null);
+  };
+
+  const addPlayer = (team: 'A' | 'B' | 'C', defaultGender: Gender = 'MALE') => {
     const newP: TempPlayer = {
       id: `p-${Date.now()}-${Math.random()}`,
       jerseyNumber: '',
       fullName: '',
+      gender: defaultGender,
     };
     if (team === 'A') setPlayersA([...playersA, newP]);
     if (team === 'B') setPlayersB([...playersB, newP]);
@@ -79,7 +175,7 @@ export default function NewMatchPage() {
   const updatePlayer = (
     team: 'A' | 'B' | 'C',
     id: string,
-    field: 'jerseyNumber' | 'fullName',
+    field: keyof TempPlayer,
     val: any
   ) => {
     const updater = (list: TempPlayer[]) =>
@@ -91,6 +187,34 @@ export default function NewMatchPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validasi Komposisi Gender Korfball
+    const activeFormat = structure === 'THREE_TEAM' ? 'K4' : format;
+    const requiredMales = activeFormat === 'K8' ? 4 : 2;
+    const requiredFemales = activeFormat === 'K8' ? 4 : 2;
+
+    if (countA.males < requiredMales || countA.females < requiredFemales) {
+      setValidationError(
+        `Tim A belum memenuhi syarat resmi Korfball ${activeFormat}! Diperlukan minimal ${requiredMales} Laki-laki (L) dan ${requiredFemales} Perempuan (P). Saat ini: ${countA.males}L / ${countA.females}P.`
+      );
+      return;
+    }
+
+    if (countB.males < requiredMales || countB.females < requiredFemales) {
+      setValidationError(
+        `Tim B belum memenuhi syarat resmi Korfball ${activeFormat}! Diperlukan minimal ${requiredMales} Laki-laki (L) dan ${requiredFemales} Perempuan (P). Saat ini: ${countB.males}L / ${countB.females}P.`
+      );
+      return;
+    }
+
+    if (structure === 'THREE_TEAM' && (countC.males < requiredMales || countC.females < requiredFemales)) {
+      setValidationError(
+        `Tim C belum memenuhi syarat resmi Korfball ${activeFormat}! Diperlukan minimal ${requiredMales} Laki-laki (L) dan ${requiredFemales} Perempuan (P). Saat ini: ${countC.males}L / ${countC.females}P.`
+      );
+      return;
+    }
+
+    setValidationError(null);
 
     const matchId = `match-${Date.now()}`;
     const teamAId = `team-${Date.now()}-a`;
@@ -104,7 +228,7 @@ export default function NewMatchPage() {
         teamId: teamAId,
         jerseyNumber: Number(p.jerseyNumber) || idx + 1,
         fullName: p.fullName.trim(),
-        gender: idx % 2 === 0 ? 'MALE' : 'FEMALE',
+        gender: p.gender,
         isActive: true,
       }));
 
@@ -115,7 +239,7 @@ export default function NewMatchPage() {
         teamId: teamBId,
         jerseyNumber: Number(p.jerseyNumber) || idx + 1,
         fullName: p.fullName.trim(),
-        gender: idx % 2 === 0 ? 'MALE' : 'FEMALE',
+        gender: p.gender,
         isActive: true,
       }));
 
@@ -128,7 +252,7 @@ export default function NewMatchPage() {
               teamId: teamCId,
               jerseyNumber: Number(p.jerseyNumber) || idx + 1,
               fullName: p.fullName.trim(),
-              gender: idx % 2 === 0 ? 'MALE' : 'FEMALE',
+              gender: p.gender,
               isActive: true,
             }))
         : undefined;
@@ -157,50 +281,36 @@ export default function NewMatchPage() {
           }
         : undefined;
 
-    // Lineups: first 8 (or 4 in K4) as on-court starters
-    const onCourtLimit = format === 'K4' ? 4 : 8;
+    // Lineup Starter: 4 L + 4 P untuk K8, atau 2 L + 2 P untuk K4
+    const buildStarters = (players: Player[]) => {
+      const males = players.filter((p) => p.gender === 'MALE');
+      const females = players.filter((p) => p.gender === 'FEMALE');
+      const startersMale = males.slice(0, requiredMales).map((p) => p.id);
+      const startersFemale = females.slice(0, requiredFemales).map((p) => p.id);
+      const starterIds = new Set([...startersMale, ...startersFemale]);
 
-    const lineupsA = formattedPlayersA.map((p, idx) => ({
-      id: `lineup-${p.id}`,
-      matchId,
-      playerId: p.id,
-      teamId: teamAId,
-      isStarter: idx < onCourtLimit,
-      isOnCourt: idx < onCourtLimit,
-      periodEntered: 1,
-      player: p,
-    }));
+      return players.map((p) => ({
+        id: `lineup-${p.id}`,
+        matchId,
+        playerId: p.id,
+        teamId: p.teamId,
+        isStarter: starterIds.has(p.id),
+        isOnCourt: starterIds.has(p.id),
+        periodEntered: 1,
+        player: p,
+      }));
+    };
 
-    const lineupsB = formattedPlayersB.map((p, idx) => ({
-      id: `lineup-${p.id}`,
-      matchId,
-      playerId: p.id,
-      teamId: teamBId,
-      isStarter: idx < onCourtLimit,
-      isOnCourt: idx < onCourtLimit,
-      periodEntered: 1,
-      player: p,
-    }));
-
-    const lineupsC = formattedPlayersC
-      ? formattedPlayersC.map((p, idx) => ({
-          id: `lineup-${p.id}`,
-          matchId,
-          playerId: p.id,
-          teamId: teamCId!,
-          isStarter: idx < 4,
-          isOnCourt: idx < 4,
-          periodEntered: 1,
-          player: p,
-        }))
-      : [];
+    const lineupsA = buildStarters(formattedPlayersA);
+    const lineupsB = buildStarters(formattedPlayersB);
+    const lineupsC = formattedPlayersC ? buildStarters(formattedPlayersC) : [];
 
     const newMatch: MatchState = {
       id: matchId,
       matchCode: matchCode.trim(),
       matchDate: new Date().toISOString(),
       venue: venue.trim(),
-      format: structure === 'THREE_TEAM' ? 'K4' : format,
+      format: activeFormat,
       teamStructure: structure,
       teamA: teamAObj,
       teamB: teamBObj,
@@ -224,6 +334,10 @@ export default function NewMatchPage() {
     router.push(`/matches/${matchId}`);
   };
 
+  const activeFormat = structure === 'THREE_TEAM' ? 'K4' : format;
+  const targetMales = activeFormat === 'K8' ? 4 : 2;
+  const targetFemales = activeFormat === 'K8' ? 4 : 2;
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
       <div className="flex items-center gap-3">
@@ -236,18 +350,50 @@ export default function NewMatchPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Inisialisasi Pertandingan Baru</h1>
           <p className="text-xs text-slate-500">
-            Setup format dan roster pemain sebelum pencatatan live match dimulai
+            Setup format pertandingan & komposisi pemain berpasangan (Mixed Gender)
           </p>
         </div>
       </div>
 
+      {/* Validation Warning Alert */}
+      {validationError && (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2.5 shadow-sm">
+          <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0 -mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-bold">Komposisi Tim Belum Valid</p>
+            <p>{validationError}</p>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Step 1: Format & Metadata */}
         <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-5 shadow-sm">
-          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-            <Trophy className="w-4 h-4 text-amber-500" />
-            <span>1. Format Pertandingan & Informasi Laga</span>
-          </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-amber-500" />
+              <span>1. Format Pertandingan & Informasi Laga</span>
+            </h2>
+
+            {/* Quick Seed Buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSeedBantulSquad}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-300 flex items-center gap-1.5 transition shadow-sm"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                <span>⚡ Muat Roster Atlet Bantul (Didiv dkk.)</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleClearRoster}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:bg-slate-100 transition"
+              >
+                Kosongkan
+              </button>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -257,9 +403,7 @@ export default function NewMatchPage() {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setStructure('TWO_TEAM');
-                  }}
+                  onClick={() => setStructure('TWO_TEAM')}
                   className={`py-2.5 px-3 rounded-lg text-xs font-bold border transition ${
                     structure === 'TWO_TEAM'
                       ? 'bg-blue-50 border-blue-600 text-blue-700 shadow-sm'
@@ -300,7 +444,7 @@ export default function NewMatchPage() {
                       : 'border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40'
                   }`}
                 >
-                  K8 (8 Pemain on-court)
+                  K8 (4 Putra + 4 Putri)
                 </button>
                 <button
                   type="button"
@@ -311,7 +455,7 @@ export default function NewMatchPage() {
                       : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
-                  K4 (4 Pemain on-court)
+                  K4 (2 Putra + 2 Putri)
                 </button>
               </div>
             </div>
@@ -341,228 +485,69 @@ export default function NewMatchPage() {
                 className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Durasi Babak (Menit)
-              </label>
-              <input
-                type="number"
-                min="5"
-                max="45"
-                value={periodDuration}
-                onChange={(e) => setPeriodDuration(Number(e.target.value))}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Jumlah Babak
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="4"
-                value={periods}
-                onChange={(e) => setPeriods(Number(e.target.value))}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
           </div>
         </div>
 
-        {/* Step 2: Team Roster Setup */}
+        {/* Step 2: Team Roster Setup with L/P Badge & Gender Validation */}
         <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-6 shadow-sm">
-          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-            <Users className="w-4 h-4 text-blue-600" />
-            <span>2. Susunan Tim & Roster Pemain</span>
-          </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <Users className="w-4 h-4 text-blue-600" />
+              <span>2. Susunan Pemain & Komposisi Gender (L/P)</span>
+            </h2>
+            <div className="text-xs bg-slate-100 px-3 py-1 rounded-full text-slate-700 font-medium">
+              Aturan {activeFormat}: Wajib minimal{' '}
+              <span className="font-bold text-blue-700">{targetMales} Laki-laki (L)</span> &{' '}
+              <span className="font-bold text-rose-700">{targetFemales} Perempuan (P)</span> per tim
+            </div>
+          </div>
 
           <div className="space-y-6">
             {/* Team A */}
-            <div className="space-y-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center gap-2 flex-1">
-                  <span className="w-6 h-6 rounded-md bg-blue-600 text-white text-xs font-bold flex items-center justify-center">
-                    A
-                  </span>
-                  <input
-                    type="text"
-                    required
-                    value={teamAName}
-                    onChange={(e) => setTeamAName(e.target.value)}
-                    placeholder="Nama Tim A"
-                    className="font-bold text-slate-900 bg-white px-3 py-1.5 rounded-lg border border-slate-300 text-sm flex-1 max-w-sm"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => addPlayer('A')}
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 self-start sm:self-auto"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Tambah Atlet</span>
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-2">
-                {playersA.map((p, idx) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200"
-                  >
-                    <span className="text-[10px] text-slate-400 font-mono w-4">{idx + 1}.</span>
-                    <input
-                      type="number"
-                      placeholder="No"
-                      value={p.jerseyNumber}
-                      onChange={(e) =>
-                        updatePlayer('A', p.id, 'jerseyNumber', e.target.value ? Number(e.target.value) : '')
-                      }
-                      className="w-12 px-1.5 py-1 text-xs text-center font-bold font-mono rounded border border-slate-300"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Nama Pemain"
-                      value={p.fullName}
-                      onChange={(e) => updatePlayer('A', p.id, 'fullName', e.target.value)}
-                      className="flex-1 px-2 py-1 text-xs rounded border border-slate-300"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removePlayer('A', p.id)}
-                      className="text-slate-400 hover:text-red-500 p-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <TeamRosterSection
+              teamKey="A"
+              teamName={teamAName}
+              setTeamName={setTeamAName}
+              players={playersA}
+              colorBadge="bg-blue-600"
+              count={countA}
+              targetMales={targetMales}
+              targetFemales={targetFemales}
+              onAddPlayer={(gender) => addPlayer('A', gender)}
+              onRemovePlayer={(id) => removePlayer('A', id)}
+              onUpdatePlayer={(id, field, val) => updatePlayer('A', id, field, val)}
+            />
 
             {/* Team B */}
-            <div className="space-y-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center gap-2 flex-1">
-                  <span className="w-6 h-6 rounded-md bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">
-                    B
-                  </span>
-                  <input
-                    type="text"
-                    required
-                    value={teamBName}
-                    onChange={(e) => setTeamBName(e.target.value)}
-                    placeholder="Nama Tim B"
-                    className="font-bold text-slate-900 bg-white px-3 py-1.5 rounded-lg border border-slate-300 text-sm flex-1 max-w-sm"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => addPlayer('B')}
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 self-start sm:self-auto"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Tambah Atlet</span>
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-2">
-                {playersB.map((p, idx) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200"
-                  >
-                    <span className="text-[10px] text-slate-400 font-mono w-4">{idx + 1}.</span>
-                    <input
-                      type="number"
-                      placeholder="No"
-                      value={p.jerseyNumber}
-                      onChange={(e) =>
-                        updatePlayer('B', p.id, 'jerseyNumber', e.target.value ? Number(e.target.value) : '')
-                      }
-                      className="w-12 px-1.5 py-1 text-xs text-center font-bold font-mono rounded border border-slate-300"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Nama Pemain"
-                      value={p.fullName}
-                      onChange={(e) => updatePlayer('B', p.id, 'fullName', e.target.value)}
-                      className="flex-1 px-2 py-1 text-xs rounded border border-slate-300"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removePlayer('B', p.id)}
-                      className="text-slate-400 hover:text-red-500 p-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <TeamRosterSection
+              teamKey="B"
+              teamName={teamBName}
+              setTeamName={setTeamBName}
+              players={playersB}
+              colorBadge="bg-emerald-600"
+              count={countB}
+              targetMales={targetMales}
+              targetFemales={targetFemales}
+              onAddPlayer={(gender) => addPlayer('B', gender)}
+              onRemovePlayer={(id) => removePlayer('B', id)}
+              onUpdatePlayer={(id, field, val) => updatePlayer('B', id, field, val)}
+            />
 
             {/* Team C (Conditional for 3 Team) */}
             {structure === 'THREE_TEAM' && (
-              <div className="space-y-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 flex-1">
-                    <span className="w-6 h-6 rounded-md bg-amber-600 text-white text-xs font-bold flex items-center justify-center">
-                      C
-                    </span>
-                    <input
-                      type="text"
-                      required
-                      value={teamCName}
-                      onChange={(e) => setTeamCName(e.target.value)}
-                      placeholder="Nama Tim C"
-                      className="font-bold text-slate-900 bg-white px-3 py-1.5 rounded-lg border border-slate-300 text-sm flex-1 max-w-sm"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => addPlayer('C')}
-                    className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 self-start sm:self-auto"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Tambah Atlet</span>
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-2">
-                  {playersC.map((p, idx) => (
-                    <div
-                      key={p.id}
-                      className="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200"
-                    >
-                      <span className="text-[10px] text-slate-400 font-mono w-4">{idx + 1}.</span>
-                      <input
-                        type="number"
-                        placeholder="No"
-                        value={p.jerseyNumber}
-                        onChange={(e) =>
-                          updatePlayer('C', p.id, 'jerseyNumber', e.target.value ? Number(e.target.value) : '')
-                        }
-                        className="w-12 px-1.5 py-1 text-xs text-center font-bold font-mono rounded border border-slate-300"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Nama Pemain"
-                        value={p.fullName}
-                        onChange={(e) => updatePlayer('C', p.id, 'fullName', e.target.value)}
-                        className="flex-1 px-2 py-1 text-xs rounded border border-slate-300"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removePlayer('C', p.id)}
-                        className="text-slate-400 hover:text-red-500 p-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <TeamRosterSection
+                teamKey="C"
+                teamName={teamCName}
+                setTeamName={setTeamCName}
+                players={playersC}
+                colorBadge="bg-amber-600"
+                count={countC}
+                targetMales={targetMales}
+                targetFemales={targetFemales}
+                onAddPlayer={(gender) => addPlayer('C', gender)}
+                onRemovePlayer={(id) => removePlayer('C', id)}
+                onUpdatePlayer={(id, field, val) => updatePlayer('C', id, field, val)}
+              />
             )}
           </div>
         </div>
@@ -584,6 +569,166 @@ export default function NewMatchPage() {
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+interface TeamRosterSectionProps {
+  teamKey: 'A' | 'B' | 'C';
+  teamName: string;
+  setTeamName: (val: string) => void;
+  players: TempPlayer[];
+  colorBadge: string;
+  count: { males: number; females: number; total: number };
+  targetMales: number;
+  targetFemales: number;
+  onAddPlayer: (gender: Gender) => void;
+  onRemovePlayer: (id: string) => void;
+  onUpdatePlayer: (id: string, field: keyof TempPlayer, val: any) => void;
+}
+
+function TeamRosterSection({
+  teamKey,
+  teamName,
+  setTeamName,
+  players,
+  colorBadge,
+  count,
+  targetMales,
+  targetFemales,
+  onAddPlayer,
+  onRemovePlayer,
+  onUpdatePlayer,
+}: TeamRosterSectionProps) {
+  const isMaleValid = count.males >= targetMales;
+  const isFemaleValid = count.females >= targetFemales;
+
+  return (
+    <div className="space-y-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="flex items-center gap-2 flex-1">
+          <span className={`w-7 h-7 rounded-lg ${colorBadge} text-white text-xs font-bold flex items-center justify-center`}>
+            {teamKey}
+          </span>
+          <input
+            type="text"
+            required
+            value={teamName}
+            onChange={(e) => setTeamName(e.target.value)}
+            placeholder={`Nama Tim ${teamKey}`}
+            className="font-bold text-slate-900 bg-white px-3 py-1.5 rounded-lg border border-slate-300 text-sm flex-1 max-w-sm"
+          />
+
+          {/* Gender Status Pill */}
+          <div className="flex items-center gap-1.5 text-xs font-bold pl-2">
+            <span
+              className={`px-2 py-0.5 rounded-md border ${
+                isMaleValid
+                  ? 'bg-blue-100 text-blue-800 border-blue-200'
+                  : 'bg-rose-100 text-rose-800 border-rose-200'
+              }`}
+            >
+              L: {count.males}/{targetMales}
+            </span>
+            <span
+              className={`px-2 py-0.5 rounded-md border ${
+                isFemaleValid
+                  ? 'bg-rose-100 text-rose-800 border-rose-200'
+                  : 'bg-amber-100 text-amber-800 border-amber-200'
+              }`}
+            >
+              P: {count.females}/{targetFemales}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => onAddPlayer('MALE')}
+            className="text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2 py-1 rounded-md flex items-center gap-1 transition"
+          >
+            <Plus className="w-3 h-3" />
+            <span>+ Laki-laki (L)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onAddPlayer('FEMALE')}
+            className="text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2 py-1 rounded-md flex items-center gap-1 transition"
+          >
+            <Plus className="w-3 h-3" />
+            <span>+ Perempuan (P)</span>
+          </button>
+        </div>
+      </div>
+
+      {players.length === 0 ? (
+        <div className="text-center py-6 text-slate-400 text-xs border border-dashed border-slate-200 rounded-lg">
+          Belum ada pemain di Tim {teamKey}. Klik tombol <strong>+ Laki-laki (L)</strong> / <strong>+ Perempuan (P)</strong> di atas atau gunakan tombol <strong>Muat Roster Atlet Bantul</strong>.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
+          {players.map((p, idx) => {
+            const isMale = p.gender === 'MALE';
+            return (
+              <div
+                key={p.id}
+                className="flex items-center gap-1.5 bg-white p-2 rounded-lg border border-slate-200 shadow-xs"
+              >
+                <span className="text-[10px] text-slate-400 font-mono w-4">{idx + 1}.</span>
+
+                {/* Gender Toggle Badge L / P */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    onUpdatePlayer(p.id, 'gender', isMale ? 'FEMALE' : 'MALE')
+                  }
+                  title="Klik untuk mengubah gender (L = Laki-laki, P = Perempuan)"
+                  className={`w-6 h-6 rounded font-black text-xs flex items-center justify-center transition ${
+                    isMale
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'bg-rose-500 text-white hover:bg-rose-600'
+                  }`}
+                >
+                  {isMale ? 'L' : 'P'}
+                </button>
+
+                {/* Jersey Number */}
+                <input
+                  type="number"
+                  placeholder="No"
+                  value={p.jerseyNumber}
+                  onChange={(e) =>
+                    onUpdatePlayer(
+                      p.id,
+                      'jerseyNumber',
+                      e.target.value ? Number(e.target.value) : ''
+                    )
+                  }
+                  className="w-11 px-1 py-1 text-xs text-center font-bold font-mono rounded border border-slate-300 focus:ring-1 focus:ring-blue-500"
+                />
+
+                {/* Full Name */}
+                <input
+                  type="text"
+                  placeholder="Nama Pemain"
+                  value={p.fullName}
+                  onChange={(e) => onUpdatePlayer(p.id, 'fullName', e.target.value)}
+                  className="flex-1 px-2 py-1 text-xs rounded border border-slate-300 focus:ring-1 focus:ring-blue-500 font-medium"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => onRemovePlayer(p.id)}
+                  className="text-slate-400 hover:text-red-500 p-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
