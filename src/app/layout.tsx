@@ -35,12 +35,12 @@ export default function RootLayout({
   return (
     <html lang="id" className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <body className="bg-canvas text-slate-900 min-h-screen flex flex-col font-sans antialiased selection:bg-brand-100 selection:text-brand-900">
-        {/* Corporate Minimalist Header */}
+        {/* Corporate Minimalist Header — Fully Responsive */}
         <header className="bg-brand-950 text-white shadow-card sticky top-0 z-50 border-b border-brand-900">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
             {/* Brand Logo & Name */}
-            <Link href="/" className="flex items-center space-x-3 group">
-              <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-white/20 shadow-xs group-hover:scale-105 transition-transform bg-brand-900 shrink-0">
+            <Link href="/" className="flex items-center space-x-2.5 sm:space-x-3 group min-w-0">
+              <div className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-xl overflow-hidden border border-white/20 shadow-xs group-hover:scale-105 transition-transform bg-brand-900 shrink-0">
                 <Image
                   src="/image/Korfball Bantul Logo.jpg"
                   alt="Logo Korfball Bantul"
@@ -50,31 +50,35 @@ export default function RootLayout({
                   priority
                 />
               </div>
-              <div>
-                <span className="text-base sm:text-lg font-black tracking-tight text-white block">
+              <div className="min-w-0">
+                <span className="text-sm sm:text-base lg:text-lg font-black tracking-tight text-white block truncate">
                   KorfStats <span className="text-amber-400 font-bold">Bantul</span>
                 </span>
-                <span className="text-[11px] text-slate-400 block -mt-1 font-medium">
+                <span className="hidden sm:block text-[11px] text-slate-400 -mt-0.5 font-medium truncate">
                   Official Score Sheet & Match Log
                 </span>
               </div>
             </Link>
 
-            {/* Navigation Actions */}
-            <nav className="flex items-center space-x-2 sm:space-x-3">
+            {/* Navigation Actions — Compact on Mobile */}
+            <nav className="flex items-center space-x-1.5 sm:space-x-3 shrink-0">
               <Link
                 href="/"
-                className="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 transition flex items-center gap-1.5"
+                className="px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-300 hover:text-white hover:bg-white/10 transition flex items-center gap-1.5"
+                title="Daftar Pertandingan"
               >
-                <Trophy className="w-4 h-4 text-amber-400" />
-                <span>Pertandingan</span>
+                <Trophy className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="hidden md:inline">Pertandingan</span>
               </Link>
               <Link
                 href="/matches/new"
-                className="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold bg-white text-brand-950 hover:bg-slate-100 transition flex items-center gap-1.5 shadow-xs"
+                className="px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold bg-white text-brand-950 hover:bg-slate-100 transition flex items-center gap-1.5 shadow-xs shrink-0"
               >
-                <PlusCircle className="w-4 h-4 text-brand-700" />
-                <span>Mulai Game Baru</span>
+                <PlusCircle className="w-4 h-4 text-brand-700 shrink-0" />
+                <span>
+                  <span className="sm:hidden">Game Baru</span>
+                  <span className="hidden sm:inline">Mulai Game Baru</span>
+                </span>
               </Link>
             </nav>
           </div>

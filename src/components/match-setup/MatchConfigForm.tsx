@@ -29,7 +29,7 @@ export function MatchConfigForm({
   onClearRoster,
 }: MatchConfigFormProps) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200/90 p-6 space-y-5 shadow-card">
+    <div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-6 space-y-4 sm:space-y-5 shadow-card">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
         <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
           <Trophy className="w-4 h-4 text-amber-500" />
@@ -37,19 +37,22 @@ export function MatchConfigForm({
         </h2>
 
         {/* Quick Seed Buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <button
             type="button"
             onClick={onSeedBantul}
             className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-300 flex items-center gap-1.5 transition shadow-xs"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-            <span>⚡ Muat Roster Atlet Bantul (Didiv dkk.)</span>
+            <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span>
+              <span className="sm:hidden">⚡ Muat Tim Bantul</span>
+              <span className="hidden sm:inline">⚡ Muat Roster Atlet Bantul (Didiv dkk.)</span>
+            </span>
           </button>
           <button
             type="button"
             onClick={onClearRoster}
-            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:bg-slate-100 transition"
+            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:bg-slate-100 transition shrink-0"
           >
             Kosongkan
           </button>

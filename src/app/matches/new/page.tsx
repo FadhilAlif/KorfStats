@@ -69,7 +69,7 @@ export default function NewMatchPage() {
         />
 
         {/* Step 2: Team Rosters Setup */}
-        <div className="bg-white rounded-xl border border-slate-200/90 p-6 space-y-6 shadow-card">
+        <div className="bg-white rounded-xl border border-slate-200/90 p-4 sm:p-6 space-y-5 sm:space-y-6 shadow-card">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
             <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
               <Users className="w-4 h-4 text-brand-700" />

@@ -31,9 +31,10 @@ export default function LiveMatchPage() {
   const { match, loading, updateMatch, recordEvent, undo, tick } = useLiveMatch(matchId);
 
   // Active UI navigation
-  const [selectedTeamIdState, setSelectedTeamId] = useState<string>('');
+  const [selectedTeamIdState, setSelectedTeamIdState] = useState<string>('');
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>('');
   const [viewMode, setViewMode] = useState<'ACTIONS' | 'BORANG'>('ACTIONS');
+  const [mobileWorkspaceTab, setMobileWorkspaceTab] = useState<'ACTION' | 'FEED'>('ACTION');
 
   // Clock state
   const [isTimerRunning, setIsTimerRunning] = useState(false);
@@ -84,7 +85,6 @@ export default function LiveMatchPage() {
     if (!selectedPlayer) return;
 
     if (isGoalAction(actionType)) {
-      // FREEZE / SNAPSHOT WAKTU KEJADIAN GOL SAAT TOMBOL DIKLIK
       setPendingActionType(actionType);
       setPendingGoalTimeSeconds(match.gameTimeSeconds);
       setPendingGoalPeriod(match.currentPeriod);
@@ -100,7 +100,6 @@ export default function LiveMatchPage() {
       recordEvent(event);
 
       if (isMissAction(actionType)) {
-        // FREEZE / SNAPSHOT WAKTU KEJADIAN REBOUND SEGERA SETELAH TEMBAKAN MISS
         setPendingMissTimeSeconds(match.gameTimeSeconds);
         setPendingMissPeriod(match.currentPeriod);
         setReboundModalOpen(true);
@@ -159,19 +158,22 @@ export default function LiveMatchPage() {
     }
   };
 
+  const activeGoalsCount = match.events.filter((e) => !e.isDeleted && e.pointsAwarded > 0).length;
+
   return (
-    <div className="space-y-4 max-w-7xl mx-auto pb-12">
+    <div className="space-y-3.5 sm:space-y-4 max-w-7xl mx-auto pb-12">
       {/* Top Bar Navigation & Info */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 sm:p-4 rounded-xl border border-slate-200/90 shadow-card">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 bg-white p-3 sm:p-4 rounded-xl border border-slate-200/90 shadow-card">
+        <div className="flex items-center gap-2.5 min-w-0">
           <Link
             href="/"
-            className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition"
+            className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition shrink-0"
+            title="Kembali ke Beranda"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2 py-0.5 rounded">
                 {match.matchCode}
               </span>
@@ -179,32 +181,32 @@ export default function LiveMatchPage() {
                 {match.teamStructure === 'THREE_TEAM' ? '3 Team (K4)' : `${match.format} (2 Team)`}
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">{match.venue || 'Bantul'}</p>
+            <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 truncate">{match.venue || 'Bantul'}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={() => setViewMode(viewMode === 'ACTIONS' ? 'BORANG' : 'ACTIONS')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition flex items-center gap-1.5 shadow-xs ${
               viewMode === 'BORANG'
-                ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-xs'
+                ? 'bg-amber-500 text-slate-950 border-amber-600'
                 : 'border-slate-300 text-slate-700 hover:bg-slate-50'
             }`}
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>{viewMode === 'BORANG' ? 'Tutup Form View' : 'Form View'}</span>
+            <span>{viewMode === 'BORANG' ? 'Tutup Form' : 'Form View'}</span>
           </button>
 
           <button
             type="button"
             onClick={handleExportExcel}
             disabled={exporting}
-            className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+            className="px-3 py-1.5 sm:px-3.5 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition flex items-center gap-1.5 shadow-xs disabled:opacity-50"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-            <span>{exporting ? 'Memproses...' : 'Export Excel (.xlsx)'}</span>
+            <span>{exporting ? 'Memproses...' : 'Export Excel'}</span>
           </button>
         </div>
       </div>
@@ -221,48 +223,91 @@ export default function LiveMatchPage() {
       {viewMode === 'BORANG' ? (
         <BorangMatrixView match={match} />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Left Column: Team Switcher & On-Court Lineup (3 cols) */}
-          <div className="lg:col-span-3 space-y-3">
-            <TeamTabs
-              match={match}
-              selectedTeamId={selectedTeamId}
-              onSelectTeam={(teamId) => {
-                setSelectedTeamId(teamId);
-                const targetTeam = getTeamById(match, teamId);
-                const first = targetTeam?.players?.[0];
-                if (first) setSelectedPlayerId(first.id);
-              }}
-            />
+        <div className="space-y-3 sm:space-y-4">
+          {/* Mobile View Switcher (lg:hidden) */}
+          <div className="flex lg:hidden bg-slate-200/80 p-1 rounded-xl gap-1 text-xs font-bold shadow-xs">
+            <button
+              type="button"
+              onClick={() => setMobileWorkspaceTab('ACTION')}
+              className={`flex-1 py-2 rounded-lg transition text-center flex items-center justify-center gap-1.5 ${
+                mobileWorkspaceTab === 'ACTION'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>⚡ Pencatatan & Lineup</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileWorkspaceTab('FEED')}
+              className={`flex-1 py-2 rounded-lg transition text-center flex items-center justify-center gap-1.5 ${
+                mobileWorkspaceTab === 'FEED'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>📋 Running Score</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 text-slate-800 font-mono">
+                {activeGoalsCount}
+              </span>
+            </button>
+          </div>
 
-            <div className="bg-white rounded-xl border border-slate-200/90 p-3.5 shadow-card space-y-2">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <span className="text-xs font-bold text-slate-800">Lineup Lapangan</span>
-                <span className="text-[10px] text-slate-400">Pilih atlet</span>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {/* Left Column: Team Switcher & On-Court Lineup (3 cols) */}
+            <div
+              className={`lg:col-span-3 space-y-3 ${
+                mobileWorkspaceTab !== 'ACTION' ? 'hidden lg:block' : ''
+              }`}
+            >
+              <TeamTabs
+                match={match}
+                selectedTeamId={selectedTeamId}
+                onSelectTeam={(teamId) => {
+                  setSelectedTeamIdState(teamId);
+                  const targetTeam = getTeamById(match, teamId);
+                  const first = targetTeam?.players?.[0];
+                  if (first) setSelectedPlayerId(first.id);
+                }}
+              />
+
+              <div className="bg-white rounded-xl border border-slate-200/90 p-3 sm:p-3.5 shadow-card space-y-2">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <span className="text-xs font-bold text-slate-800">Lineup Lapangan</span>
+                  <span className="text-[10px] text-slate-400">Pilih atlet</span>
+                </div>
+
+                <PlayerGrid
+                  players={currentPlayers}
+                  selectedPlayerId={selectedPlayer?.id || ''}
+                  onSelectPlayer={setSelectedPlayerId}
+                  events={match.events}
+                />
               </div>
+            </div>
 
-              <PlayerGrid
-                players={currentPlayers}
-                selectedPlayerId={selectedPlayer?.id || ''}
-                onSelectPlayer={setSelectedPlayerId}
-                events={match.events}
+            {/* Center Column: Quick Action Pad (4 cols) */}
+            <div
+              className={`lg:col-span-4 space-y-4 ${
+                mobileWorkspaceTab !== 'ACTION' ? 'hidden lg:block' : ''
+              }`}
+            >
+              <ActionPad
+                selectedPlayer={selectedPlayer}
+                canUndo={checkCanUndo(match)}
+                onActionClick={handleActionClick}
+                onQuickUndo={undo}
               />
             </div>
-          </div>
 
-          {/* Center Column: Quick Action Pad (4 cols) */}
-          <div className="lg:col-span-4 space-y-4">
-            <ActionPad
-              selectedPlayer={selectedPlayer}
-              canUndo={checkCanUndo(match)}
-              onActionClick={handleActionClick}
-              onQuickUndo={undo}
-            />
-          </div>
-
-          {/* Right Column: Running Score Live (5 cols) */}
-          <div className="lg:col-span-5 space-y-4">
-            <RunningScoreFeed match={match} />
+            {/* Right Column: Running Score Live (5 cols) */}
+            <div
+              className={`lg:col-span-5 space-y-4 ${
+                mobileWorkspaceTab !== 'FEED' ? 'hidden lg:block' : ''
+              }`}
+            >
+              <RunningScoreFeed match={match} />
+            </div>
           </div>
         </div>
       )}
